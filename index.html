@@ -16,7 +16,7 @@
     --line:#ccd6e0;
     --paper:#eef1f4;      /* cool depot grey */
     --card:#ffffff;
-    --signal:#ff5c1f;     /* hi-vis courier orange, spent only on the sum strip */
+    --signal:#ff5c1f;     /* hi-vis courier orange */
     --ok:#1f7a4d;
     --mono:"IBM Plex Mono","Cascadia Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
     --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
@@ -31,18 +31,30 @@
   }
   .wrap{max-width:760px;margin:0 auto;padding:0 14px}
 
-  /* ---------- header: waybill strip ---------- */
+  /* ---------- header ---------- */
   header{
     background:var(--ink);color:#fff;
-    padding:calc(14px + env(safe-area-inset-top)) 0 14px;
+    padding:calc(12px + env(safe-area-inset-top)) 0 12px;
     border-bottom:4px solid var(--signal);
   }
-  header .wrap{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
-  header h1{font-size:1.05rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  header h1{font-size:1rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
   header h1 span{color:var(--signal)}
-  header .no{font-family:var(--mono);font-size:.8rem;opacity:.85}
+  header .no{font-family:var(--mono);font-size:.75rem;opacity:.85}
 
-  /* ---------- sections styled as form blocks ---------- */
+  /* ---------- mode switch ---------- */
+  .modes{max-width:760px;margin:14px auto 0;padding:0 14px}
+  .seg{
+    display:grid;grid-template-columns:1fr 1fr;background:#dde3ea;border-radius:10px;padding:4px;gap:4px;
+  }
+  .seg button{
+    border:none;border-radius:8px;padding:11px 8px;font-size:.9rem;font-weight:700;
+    letter-spacing:.04em;cursor:pointer;background:transparent;color:var(--ink-2);
+  }
+  .seg button.on{background:var(--ink);color:#fff}
+  .seg button .sub{display:block;font-size:.62rem;font-weight:500;opacity:.75;letter-spacing:.02em}
+
+  /* ---------- sections (Pro mode) ---------- */
   section{
     background:var(--card);border:1px solid var(--line);border-radius:8px;
     margin:14px 0;overflow:hidden;
@@ -71,7 +83,6 @@
   textarea{resize:vertical;min-height:58px}
   input:focus,textarea:focus,button:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
 
-  /* ---------- line items ---------- */
   .item{
     display:grid;grid-template-columns:1fr 64px 86px 96px 34px;gap:8px;
     align-items:end;padding:10px 0;border-bottom:1px dashed var(--line);
@@ -97,7 +108,58 @@
   .totals div{display:flex;justify-content:space-between;padding:3px 0}
   .totals .sum{font-weight:700;font-size:1rem}
 
-  /* ---------- signature element: hi-vis sum strip ---------- */
+  /* ---------- EASY MODE ---------- */
+  #easy{display:none}
+  body.easy #easy{display:block}
+  body.easy #pro{display:none}
+  body:not(.easy) #easy{display:none}
+
+  .month{
+    background:var(--card);border:1px solid var(--line);border-radius:10px;margin:14px 0;
+    display:grid;grid-template-columns:56px 1fr 56px;align-items:stretch;overflow:hidden;
+  }
+  .month button{
+    border:none;background:#f6f8fa;font-size:1.3rem;color:var(--ink);cursor:pointer;border-radius:0;
+  }
+  .month button:active{background:#e6ebf1}
+  .month .m{
+    text-align:center;padding:12px 6px;
+  }
+  .month .m .lbl{font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-2);font-weight:700}
+  .month .m .val{font-size:1.25rem;font-weight:800;letter-spacing:.02em}
+  .month .m .rng{font-family:var(--mono);font-size:.68rem;color:var(--ink-2);margin-top:2px}
+
+  .ecard{
+    background:var(--card);border:1px solid var(--line);border-radius:10px;margin:10px 0;
+    display:grid;grid-template-columns:44px 1fr;overflow:hidden;position:relative;
+    transition:transform .15s, box-shadow .15s;
+  }
+  .ecard.dragging{z-index:30;box-shadow:0 10px 24px rgba(22,40,59,.3);transition:none;opacity:.97}
+  .ecard .handle{
+    touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;
+    background:#f6f8fa;border-right:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--ink-2);font-size:1.1rem;letter-spacing:0;
+  }
+  .ecard.dragging .handle{cursor:grabbing}
+  .ecard .in{padding:10px 12px 12px}
+  .ecard .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .ecard .name{font-weight:700;font-size:.9rem}
+  .ecard .unit{font-family:var(--mono);font-size:.68rem;color:var(--ink-2)}
+  .ecard .mid{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;flex-wrap:wrap}
+  .ecard .bigval{font-family:var(--mono);font-size:1.5rem;font-weight:700;min-width:86px}
+  .ecard .bigval small{font-size:.65rem;font-weight:500;color:var(--ink-2);display:block;letter-spacing:.08em}
+  .steps{display:flex;gap:6px}
+  .steps button{
+    min-width:52px;height:46px;border:1px solid var(--line);border-radius:8px;background:#fff;
+    font-family:var(--mono);font-size:.85rem;font-weight:700;color:var(--ink);cursor:pointer;
+  }
+  .steps button:active{background:#eef1f4;transform:translateY(1px)}
+  .steps button.plus{border-color:var(--ink);}
+  .ecard .lt{font-family:var(--mono);font-size:.85rem;color:var(--ink-2);margin-top:8px;text-align:right}
+  .easyhint{font-size:.72rem;color:var(--ink-2);text-align:center;margin:12px 0 4px}
+
+  /* ---------- sum strip ---------- */
   .strip{
     position:fixed;left:0;right:0;bottom:0;z-index:50;
     background:var(--ink);color:#fff;
@@ -117,7 +179,7 @@
   @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
-<body>
+<body class="easy">
 
 <header>
   <div class="wrap">
@@ -126,7 +188,34 @@
   </div>
 </header>
 
-<main class="wrap">
+<div class="modes">
+  <div class="seg" role="tablist">
+    <button id="mEasy" class="on" type="button">EASY MODE<span class="sub">nur Buttons — nichts tippen</span></button>
+    <button id="mPro" type="button">PROFI<span class="sub">alle Felder bearbeiten</span></button>
+  </div>
+</div>
+
+<!-- ================= EASY MODE ================= -->
+<main class="wrap" id="easy">
+
+  <div class="month">
+    <button id="mPrev" type="button" aria-label="Vormonat">◀</button>
+    <div class="m">
+      <div class="lbl">Abrechnungsmonat</div>
+      <div class="val" id="mName">—</div>
+      <div class="rng" id="mRange"></div>
+    </div>
+    <button id="mNext" type="button" aria-label="Nächster Monat">▶</button>
+  </div>
+
+  <div id="easyItems"></div>
+
+  <p class="easyhint">☰ gedrückt halten und ziehen, um Positionen zu verschieben · Beträge nur per Buttons</p>
+
+</main>
+
+<!-- ================= PRO MODE ================= -->
+<main class="wrap" id="pro">
 
   <section id="sSender" class="closed">
     <h2>Absender (einmal ausfüllen — wird gespeichert) <span class="chev">▾</span></h2>
@@ -204,10 +293,11 @@ const LS = "invoiceMaker.v1";
 const now = new Date();
 const prev = new Date(now.getFullYear(), now.getMonth()-1, 1);
 const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-const iso = d => d.toISOString().slice(0,10);
+const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const pad = n => String(n).padStart(2,"0");
 
 const DEFAULTS = {
+  mode:"easy",
   sName:"Mubeen Khalid", sJob:"Güterbeförderung mit Kraftfahrzeugen",
   sStreet:"Friedhofstraße 73/2", sCity:"4600 Wels, Österreich",
   sGisa:"39759221", sRider:"4664809", sVat:"0",
@@ -225,7 +315,7 @@ const DEFAULTS = {
 };
 let S = load();
 function load(){
-  try{ const s = JSON.parse(localStorage.getItem(LS)); if(s && s.items) return s; }catch(e){}
+  try{ const s = JSON.parse(localStorage.getItem(LS)); if(s && s.items) return Object.assign({},DEFAULTS,s); }catch(e){}
   return JSON.parse(JSON.stringify(DEFAULTS));
 }
 let saveTimer;
@@ -241,10 +331,23 @@ function save(){
 
 /* ================= number helpers (AT format) ================= */
 const toNum = v => { const n = parseFloat(String(v??"").replace(/\./g,"").replace(",",".")); return isNaN(n)?0:n; };
-const eur = n => "€ " + n.toLocaleString("de-AT",{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtDe = n => n.toLocaleString("de-AT",{minimumFractionDigits:2,maximumFractionDigits:2});
+const eur = n => "€ " + fmtDe(n);
 const deDate = s => { if(!s) return ""; const [y,m,d]=s.split("-"); return `${d}.${m}.${y}`; };
 
-/* ================= bind simple fields ================= */
+/* ================= mode switch ================= */
+const mEasy=document.getElementById("mEasy"), mPro=document.getElementById("mPro");
+function setMode(m){
+  S.mode=m; save();
+  document.body.classList.toggle("easy", m==="easy");
+  mEasy.classList.toggle("on", m==="easy");
+  mPro.classList.toggle("on", m!=="easy");
+  if(m==="easy") renderEasy();
+}
+mEasy.addEventListener("click",()=>setMode("easy"));
+mPro.addEventListener("click",()=>setMode("pro"));
+
+/* ================= bind pro fields ================= */
 document.querySelectorAll("[data-k]").forEach(el=>{
   el.value = S[el.dataset.k] ?? "";
   el.addEventListener("input",()=>{ S[el.dataset.k]=el.value; if(el.id==="iNo") hdr(); if(el.id==="sVat") calc(); save(); });
@@ -252,10 +355,10 @@ document.querySelectorAll("[data-k]").forEach(el=>{
 function hdr(){ document.getElementById("hdrNo").textContent = S.iNo || "RE-…"; }
 hdr();
 
-/* ================= collapsible sections ================= */
+/* collapsible pro sections */
 document.querySelectorAll("section>h2").forEach(h=>h.addEventListener("click",()=>h.parentElement.classList.toggle("closed")));
 
-/* ================= line items ================= */
+/* ================= PRO line items ================= */
 const itemsBox = document.getElementById("items");
 function lineTotal(it){ return it.q==="" ? toNum(it.p) : toNum(it.q)*toNum(it.p); }
 function renderItems(){
@@ -274,13 +377,13 @@ function renderItems(){
     d.addEventListener("input",()=>{it.d=d.value; save();});
     q.addEventListener("input",()=>{it.q=q.value; calc(); save();});
     p.addEventListener("input",()=>{it.p=p.value; calc(); save();});
-    row.querySelector(".del").addEventListener("click",()=>{S.items.splice(i,1); renderItems(); calc(); save();});
+    row.querySelector(".del").addEventListener("click",()=>{S.items.splice(i,1); renderItems(); renderEasy(); calc(); save();});
     itemsBox.appendChild(row);
   });
   calc();
 }
 document.getElementById("addItem").addEventListener("click",()=>{
-  S.items.push({d:"",q:"",p:""}); renderItems(); save();
+  S.items.push({d:"Neue Position",q:"1",p:"0,00"}); renderItems(); renderEasy(); save();
   itemsBox.lastElementChild.querySelector("input").focus();
 });
 
@@ -289,7 +392,7 @@ function calc(){
   const net = S.items.reduce((a,it)=>a+lineTotal(it),0);
   const rate = toNum(S.sVat);
   const vat = net*rate/100, sum = net+vat;
-  document.querySelectorAll(".amt").forEach((el,i)=>el.textContent = eur(lineTotal(S.items[i])));
+  document.querySelectorAll("#items .amt").forEach((el,i)=>el.textContent = eur(lineTotal(S.items[i])));
   document.getElementById("tNet").textContent = eur(net);
   document.getElementById("tVatLbl").textContent = `Umsatzsteuer (USt) ${rate.toLocaleString("de-AT")} %`;
   document.getElementById("tVat").textContent = eur(vat);
@@ -297,7 +400,121 @@ function calc(){
   document.getElementById("stripSum").textContent = eur(sum);
   return {net,vat,sum,rate};
 }
-renderItems();
+
+/* ================= EASY MODE ================= */
+const MONTHS=["Jänner","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+function curMonth(){ const [y,m]=(S.iFrom||iso(prev)).split("-").map(Number); return {y,m:m-1}; }
+function setMonth(y,m){ // m: 0-11
+  const from=new Date(y,m,1), to=new Date(y,m+1,0);
+  S.iFrom=iso(from); S.iTo=iso(to);
+  S.iNo=`RE-${y}-${pad(m+1)}-01`;
+  S.iDate=iso(now);
+  S.iDesc=`Dienstleistungen als selbständiger Transporteur im innerstaatlichen Güterverkehr (Zustelldienste Wels) gemäß Werkvertrag für den Abrechnungszeitraum ${MONTHS[m]} ${y}.`;
+  ["iFrom","iTo","iNo","iDate","iDesc"].forEach(k=>{const el=document.getElementById(k); if(el) el.value=S[k];});
+  hdr(); drawMonth(); save();
+}
+function drawMonth(){
+  const {y,m}=curMonth();
+  document.getElementById("mName").textContent=`${MONTHS[m]} ${y}`;
+  document.getElementById("mRange").textContent=`${deDate(S.iFrom)} – ${deDate(S.iTo)} · ${S.iNo}`;
+}
+document.getElementById("mPrev").addEventListener("click",()=>{const {y,m}=curMonth(); setMonth(m===0?y-1:y, m===0?11:m-1);});
+document.getElementById("mNext").addEventListener("click",()=>{const {y,m}=curMonth(); setMonth(m===11?y+1:y, m===11?0:m+1);});
+
+const easyBox=document.getElementById("easyItems");
+function stepBtns(steps, apply){
+  const div=document.createElement("div"); div.className="steps";
+  steps.forEach(s=>{
+    const b=document.createElement("button"); b.type="button";
+    b.textContent=(s>0?"+":"−")+fmtDe(Math.abs(s)).replace(",00","");
+    if(s>0) b.classList.add("plus");
+    b.addEventListener("click",()=>apply(s));
+    div.appendChild(b);
+  });
+  return div;
+}
+function renderEasy(){
+  easyBox.innerHTML="";
+  S.items.forEach((it,i)=>{
+    const flat = it.q==="";
+    const card=document.createElement("div"); card.className="ecard";
+    const handle=document.createElement("div"); handle.className="handle"; handle.textContent="☰";
+    handle.setAttribute("aria-label","Zum Verschieben ziehen");
+    const inner=document.createElement("div"); inner.className="in";
+
+    const top=document.createElement("div"); top.className="top";
+    top.innerHTML=`<span class="name"></span><span class="unit"></span>`;
+    top.querySelector(".name").textContent=it.d||"(ohne Namen)";
+    top.querySelector(".unit").textContent = flat ? "Pauschale" : `à € ${it.p}`;
+
+    const mid=document.createElement("div"); mid.className="mid";
+    const big=document.createElement("div"); big.className="bigval";
+    const lt=document.createElement("div"); lt.className="lt";
+    const refresh=()=>{
+      big.innerHTML = flat
+        ? `${eur(toNum(it.p))}<small>BETRAG</small>`
+        : `${toNum(it.q)}<small>MENGE</small>`;
+      lt.textContent = "Summe: " + eur(lineTotal(it));
+      calc();
+    };
+    const steps = flat
+      ? stepBtns([-5,-0.5,0.5,5], s=>{ it.p=fmtDe(Math.max(0,toNum(it.p)+s)); refresh(); renderItems(); save(); })
+      : stepBtns([-10,-1,1,10],  s=>{ it.q=String(Math.max(0,toNum(it.q)+s)); refresh(); renderItems(); save(); });
+    mid.appendChild(big); mid.appendChild(steps);
+
+    inner.appendChild(top); inner.appendChild(mid); inner.appendChild(lt);
+    card.appendChild(handle); card.appendChild(inner);
+    easyBox.appendChild(card);
+    refresh();
+    enableDrag(card, handle, i);
+  });
+  drawMonth();
+}
+
+/* ---- drag & drop reorder (pointer-based, works with touch) ---- */
+function enableDrag(card, handle, idx){
+  handle.addEventListener("pointerdown", e=>{
+    e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    const cards=[...easyBox.children];
+    const rects=cards.map(c=>c.getBoundingClientRect());
+    const H=rects[idx].height+10;
+    const startY=e.clientY;
+    let target=idx;
+    card.classList.add("dragging");
+
+    const move=ev=>{
+      card.style.transform=`translateY(${ev.clientY-startY}px)`;
+      const cy=ev.clientY;
+      target=idx;
+      rects.forEach((r,i)=>{
+        if(i===idx) return;
+        const mid=r.top+r.height/2;
+        if(i>idx && cy>mid) target=Math.max(target,i);
+        if(i<idx && cy<mid) target=Math.min(target,i);
+      });
+      cards.forEach((c,i)=>{
+        if(i===idx) return;
+        let t=0;
+        if(idx<i && i<=target) t=-H;
+        if(idx>i && i>=target) t=H;
+        c.style.transform=t?`translateY(${t}px)`:"";
+      });
+    };
+    const up=()=>{
+      handle.removeEventListener("pointermove",move);
+      handle.removeEventListener("pointerup",up);
+      handle.removeEventListener("pointercancel",up);
+      card.classList.remove("dragging");
+      const it=S.items.splice(idx,1)[0];
+      S.items.splice(target,0,it);
+      save(); renderEasy(); renderItems();
+    };
+    handle.addEventListener("pointermove",move);
+    handle.addEventListener("pointerup",up);
+    handle.addEventListener("pointercancel",up);
+  });
+}
 
 /* ================= PDF ================= */
 document.getElementById("makePdf").addEventListener("click",()=>{
@@ -307,13 +524,11 @@ document.getElementById("makePdf").addEventListener("click",()=>{
   const doc = new jspdf.jsPDF({unit:"mm",format:"a4"});
   const W=210, L=20, R=W-20; let y=20;
 
-  // header
   doc.setFont("helvetica","bold").setFontSize(22).setTextColor(...NAVY).text("RECHNUNG",L,y+6);
   doc.setFont("helvetica","normal").setFontSize(9).setTextColor(40);
   doc.text([S.sName,S.sJob,S.sStreet,S.sCity,"GISA-Zahl: "+S.sGisa].filter(Boolean),R,y,{align:"right"});
   y+=26; doc.setDrawColor(...NAVY).setLineWidth(.8).line(L,y,R,y); y+=8;
 
-  // recipient + meta
   doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(...NAVY).text("EMPFÄNGER",L,y);
   doc.setFont("helvetica","normal").setFontSize(9.5).setTextColor(20);
   const rec=[S.rName,...(S.rAddr||"").split("\n")].filter(Boolean);
@@ -325,14 +540,12 @@ document.getElementById("makePdf").addEventListener("click",()=>{
     doc.setFont("helvetica","normal").text(String(v||""),152,my); my+=5.5; });
   y=Math.max(y+5+rec.length*4.5,my)+6;
 
-  // description
   doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(...NAVY).text("LEISTUNGSBESCHREIBUNG",L,y); y+=4.5;
   doc.setFont("helvetica","normal").setFontSize(9.5).setTextColor(20);
   const desc=doc.splitTextToSize(S.iDesc||"",R-L); doc.text(desc,L,y); y+=desc.length*4.6+4;
 
-  // items table
   const body=S.items.filter(it=>it.d||it.p).map((it,i)=>[String(i+1),it.d,
-    it.q===""?"pauschal":it.q, it.q===""?"—":eur(toNum(it.p)).replace("€ ","€ "), eur(lineTotal(it))]);
+    it.q===""?"pauschal":it.q, it.q===""?"—":eur(toNum(it.p)), eur(lineTotal(it))]);
   doc.autoTable({
     startY:y, margin:{left:L,right:20},
     head:[["Pos.","Beschreibung","Menge","Einzelpreis","Gesamtbetrag"]], body,
@@ -344,7 +557,6 @@ document.getElementById("makePdf").addEventListener("click",()=>{
   });
   y=doc.lastAutoTable.finalY;
 
-  // totals
   doc.autoTable({
     startY:y, margin:{left:98,right:20}, theme:"plain",
     body:[["Netto-Gesamtbetrag",eur(net)],
@@ -357,7 +569,6 @@ document.getElementById("makePdf").addEventListener("click",()=>{
   });
   y=doc.lastAutoTable.finalY+10;
 
-  // bank
   doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(...NAVY).text("BANKVERBINDUNG",L,y); y+=4.5;
   doc.setFontSize(9).setTextColor(20);
   [["Kontoinhaber:",S.bOwner],["IBAN:",S.bIban],["BIC:",S.bBic],
@@ -366,7 +577,6 @@ document.getElementById("makePdf").addEventListener("click",()=>{
   });
   y+=4; doc.setDrawColor(...LINE).setLineWidth(.3).line(L,y,R,y); y+=5;
 
-  // legal clause (only when 0 %)
   if(rate===0){
     doc.setFontSize(8).setTextColor(85);
     const legal=doc.splitTextToSize("Rechtlicher Hinweis: Es wird keine Umsatzsteuer ausgewiesen, da der Rechnungsaussteller als Kleinunternehmer gemäß § 6 Abs. 1 Z 27 UStG umsatzsteuerbefreit ist. (No VAT is charged as the sender qualifies for the small business exemption.)",R-L);
@@ -377,6 +587,11 @@ document.getElementById("makePdf").addEventListener("click",()=>{
 
   doc.save((S.iNo||"Rechnung")+".pdf");
 });
+
+/* ================= init ================= */
+renderItems();
+renderEasy();
+setMode(S.mode==="pro"?"pro":"easy");
 
 /* ================= PWA ================= */
 if("serviceWorker" in navigator && location.protocol==="https:")
