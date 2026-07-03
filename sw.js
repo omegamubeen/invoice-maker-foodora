@@ -1,5 +1,5 @@
 // Simple offline cache for the invoice maker PWA
-const CACHE = "invoice-maker-v2";
+const CACHE = "invoice-maker-v4";
 const ASSETS = [
   "./",
   "./index.html",

@@ -176,6 +176,45 @@
   }
   .strip button:active{transform:translateY(1px)}
   .saved{font-size:.68rem;color:var(--ok);font-family:var(--mono)}
+
+  /* ---------- left edit drawer (Easy mode) ---------- */
+  .editbtn{
+    border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;
+    border-radius:8px;padding:8px 12px;font-size:.78rem;font-weight:700;
+    letter-spacing:.06em;cursor:pointer;display:flex;align-items:center;gap:6px;
+  }
+  .editbtn:active{background:rgba(255,255,255,.12)}
+  .langseg{display:flex;border:1px solid rgba(255,255,255,.35);border-radius:8px;overflow:hidden}
+  .langseg button{
+    border:none;background:transparent;color:#fff;opacity:.65;
+    padding:8px 10px;font-size:.72rem;font-weight:700;letter-spacing:.08em;cursor:pointer;
+  }
+  .langseg button.on{background:var(--signal);opacity:1}
+  .backdrop{
+    position:fixed;inset:0;background:rgba(22,40,59,.45);z-index:70;
+    opacity:0;pointer-events:none;transition:opacity .2s;
+  }
+  .backdrop.open{opacity:1;pointer-events:auto}
+  .drawer{
+    position:fixed;top:0;bottom:0;left:0;z-index:80;
+    width:min(360px,90vw);background:var(--paper);
+    transform:translateX(-102%);transition:transform .22s ease;
+    overflow-y:auto;overscroll-behavior:contain;
+    border-right:4px solid var(--signal);
+    box-shadow:8px 0 24px rgba(22,40,59,.25);
+    padding:0 12px calc(20px + env(safe-area-inset-bottom));
+  }
+  .drawer.open{transform:none}
+  .drawer .dhead{
+    position:sticky;top:0;background:var(--ink);color:#fff;z-index:2;
+    margin:0 -12px 4px;padding:calc(14px + env(safe-area-inset-top)) 14px 12px;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .drawer .dhead h3{font-size:.8rem;letter-spacing:.16em;text-transform:uppercase}
+  .drawer .dhead button{
+    border:none;background:transparent;color:#fff;font-size:1.4rem;cursor:pointer;line-height:1;
+  }
+  .drawer section{margin:10px 0}
   @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -184,9 +223,67 @@
 <header>
   <div class="wrap">
     <h1>Rechnungs<span>·</span>Maker</h1>
-    <div class="no" id="hdrNo">RE-…</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="langseg" role="group" aria-label="Sprache / Language">
+        <button id="langDe" type="button" class="on">DE</button>
+        <button id="langEn" type="button">EN</button>
+      </div>
+      <div class="no" id="hdrNo">RE-…</div>
+      <button class="editbtn" id="openDrawer" type="button" aria-label="Daten bearbeiten">✎ DATEN</button>
+    </div>
   </div>
 </header>
+
+<!-- ================= LEFT EDIT DRAWER ================= -->
+<div class="backdrop" id="backdrop"></div>
+<aside class="drawer" id="drawer" aria-label="Daten bearbeiten">
+  <div class="dhead">
+    <h3>Daten bearbeiten</h3>
+    <button id="closeDrawer" type="button" aria-label="Schließen">✕</button>
+  </div>
+
+  <section class="closed">
+    <h2>Absender <span class="chev">▾</span></h2>
+    <div class="body grid">
+      <div class="full"><label>Name</label><input data-k="sName"></div>
+      <div class="full"><label>Tätigkeit</label><input data-k="sJob"></div>
+      <div class="full"><label>Straße, Nr.</label><input data-k="sStreet"></div>
+      <div><label>PLZ, Ort</label><input data-k="sCity"></div>
+      <div><label>GISA-Zahl</label><input data-k="sGisa"></div>
+      <div><label>Rider-ID</label><input data-k="sRider"></div>
+      <div><label>USt %</label><input data-k="sVat" class="num" inputmode="decimal"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Empfänger <span class="chev">▾</span></h2>
+    <div class="body grid">
+      <div class="full"><label>Firma / Name</label><input data-k="rName"></div>
+      <div class="full"><label>Adresse (Straße, PLZ, Ort)</label><textarea data-k="rAddr"></textarea></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Bankverbindung <span class="chev">▾</span></h2>
+    <div class="body grid">
+      <div class="full"><label>Kontoinhaber</label><input data-k="bOwner"></div>
+      <div class="full"><label>IBAN</label><input data-k="bIban" class="num" style="text-align:left"></div>
+      <div><label>BIC</label><input data-k="bBic"></div>
+      <div class="full"><label>Verwendungszweck</label><input data-k="bRef"></div>
+    </div>
+  </section>
+
+  <section class="closed">
+    <h2>Rechnungsdaten <span class="chev">▾</span></h2>
+    <div class="body grid">
+      <div class="full"><label>Rechnungsnummer</label><input data-k="iNo"></div>
+      <div><label>Rechnungsdatum</label><input data-k="iDate" type="date"></div>
+      <div><label>Zeitraum von</label><input data-k="iFrom" type="date"></div>
+      <div><label>Zeitraum bis</label><input data-k="iTo" type="date"></div>
+      <div class="full"><label>Leistungsbeschreibung</label><textarea data-k="iDesc"></textarea></div>
+    </div>
+  </section>
+</aside>
 
 <div class="modes">
   <div class="seg" role="tablist">
@@ -254,7 +351,7 @@
     <div class="body">
       <div id="items"></div>
       <button class="addrow" id="addItem" type="button">＋ Position hinzufügen</button>
-      <p class="hint">Menge leer lassen = Pauschalbetrag (z. B. Trinkgeld): dann zählt „Preis" als Gesamtbetrag.</p>
+      <p class="hint">Menge leer lassen = Pauschalbetrag (z. B. Trinkgeld): dann zählt „Preis“ als Gesamtbetrag.</p>
       <div class="totals">
         <div><span>Netto-Gesamtbetrag</span><span id="tNet">€ 0,00</span></div>
         <div><span id="tVatLbl">Umsatzsteuer (USt) 0 %</span><span id="tVat">€ 0,00</span></div>
@@ -297,7 +394,7 @@ const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-$
 const pad = n => String(n).padStart(2,"0");
 
 const DEFAULTS = {
-  mode:"easy",
+  mode:"easy", lang:"de",
   sName:"Mubeen Khalid", sJob:"Güterbeförderung mit Kraftfahrzeugen",
   sStreet:"Friedhofstraße 73/2", sCity:"4600 Wels, Österreich",
   sGisa:"39759221", sRider:"4664809", sVat:"0",
@@ -323,7 +420,7 @@ function save(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{
     try{ localStorage.setItem(LS, JSON.stringify(S));
-      document.getElementById("savedNote").textContent = "✓ gespeichert";
+      document.getElementById("savedNote").textContent = t("✓ gespeichert");
       setTimeout(()=>document.getElementById("savedNote").textContent="",1500);
     }catch(e){}
   },400);
@@ -347,13 +444,96 @@ function setMode(m){
 mEasy.addEventListener("click",()=>setMode("easy"));
 mPro.addEventListener("click",()=>setMode("pro"));
 
-/* ================= bind pro fields ================= */
+/* ================= language switch (DE / EN) ================= */
+const EN_MAP = {
+  "✎ DATEN":"✎ EDIT",
+  "EASY MODE":"EASY MODE","PROFI":"PRO",
+  "nur Buttons — nichts tippen":"buttons only — no typing",
+  "alle Felder bearbeiten":"edit every field",
+  "Abrechnungsmonat":"Billing month",
+  "Daten bearbeiten":"Edit details",
+  "Absender":"Sender","Empfänger":"Recipient",
+  "Absender (einmal ausfüllen — wird gespeichert)":"Sender (fill once — saved)",
+  "Bankverbindung":"Bank details","Bankverbindung (wird gespeichert)":"Bank details (saved)",
+  "Rechnungsdaten":"Invoice details","Positionen":"Line items",
+  "Name":"Name","Tätigkeit":"Business activity","Straße, Nr.":"Street, no.",
+  "PLZ, Ort":"Postcode, city","GISA-Zahl":"GISA number","Rider-ID":"Rider ID",
+  "USt / Kleinunternehmer":"VAT % (0 = exempt)","USt %":"VAT %",
+  "Firma / Name":"Company / name","Adresse (Straße, PLZ, Ort)":"Address (street, postcode, city)",
+  "Rechnungsnummer":"Invoice number","Rechnungsdatum":"Invoice date",
+  "Leistungszeitraum von":"Service period from","Leistungszeitraum bis":"Service period to",
+  "Zeitraum von":"Period from","Zeitraum bis":"Period to",
+  "Leistungsbeschreibung":"Service description",
+  "Beschreibung":"Description","Menge":"Quantity","Preis €":"Price €",
+  "Kontoinhaber":"Account holder","IBAN":"IBAN","BIC":"BIC","Verwendungszweck":"Payment reference",
+  "＋ Position hinzufügen":"＋ Add line item",
+  "Menge leer lassen = Pauschalbetrag (z. B. Trinkgeld): dann zählt „Preis\u201C als Gesamtbetrag.":
+    "Leave quantity empty = flat amount (e.g. tips): then \u201Cprice\u201D counts as the total.",
+  "Netto-Gesamtbetrag":"Net total","ZU ZAHLEN":"TOTAL DUE","Gesamtbetrag":"Total due",
+  "Umsatzsteuer (USt)":"VAT",
+  "PDF erstellen":"Create PDF",
+  "☰ gedrückt halten und ziehen, um Positionen zu verschieben · Beträge nur per Buttons":
+    "☰ press and drag to reorder items · amounts change with buttons only",
+  "Pauschale":"Flat amount","à":"at","MENGE":"COUNT","BETRAG":"AMOUNT","Summe:":"Total:",
+  "✓ gespeichert":"✓ saved",
+  "Vormonat":"Previous month","Nächster Monat":"Next month","Schließen":"Close",
+  "PDF-Bibliothek lädt noch — bitte kurz warten (Internet nötig beim ersten Mal).":
+    "PDF library is still loading — please wait a moment (internet needed the first time)."
+};
+const t = s => (S.lang==="en" ? (EN_MAP[s] ?? s) : s);
+
+/* collect static text nodes once, remembering their German original */
+const i18nNodes = [];
+document.querySelectorAll(
+  "label, section>h2, .easyhint, .hint, .month .lbl, .dhead h3, .strip .t, " +
+  "#makePdf, #addItem, #openDrawer, .seg .sub, #mEasy, #mPro, .totals div span:first-child"
+).forEach(el=>{
+  const n = el.firstChild;
+  if(n && n.nodeType===3 && n.nodeValue.trim())
+    i18nNodes.push({n, de:n.nodeValue});
+});
+function applyLang(){
+  document.documentElement.lang = S.lang==="en" ? "en" : "de";
+  i18nNodes.forEach(({n,de})=>{
+    const key=de.trim();
+    n.nodeValue = S.lang==="en" ? de.replace(key, EN_MAP[key] ?? key) : de;
+  });
+  document.getElementById("langDe").classList.toggle("on", S.lang!=="en");
+  document.getElementById("langEn").classList.toggle("on", S.lang==="en");
+  renderItems(); renderEasy();
+}
+document.getElementById("langDe").addEventListener("click",()=>{ S.lang="de"; applyLang(); save(); });
+document.getElementById("langEn").addEventListener("click",()=>{ S.lang="en"; applyLang(); save(); });
+
+
+function setK(k, v, src){
+  S[k]=v;
+  document.querySelectorAll(`[data-k="${k}"]`).forEach(el=>{ if(el!==src) el.value=v; });
+}
 document.querySelectorAll("[data-k]").forEach(el=>{
   el.value = S[el.dataset.k] ?? "";
-  el.addEventListener("input",()=>{ S[el.dataset.k]=el.value; if(el.id==="iNo") hdr(); if(el.id==="sVat") calc(); save(); });
+  el.addEventListener("input",()=>{
+    const k=el.dataset.k;
+    setK(k, el.value, el);
+    if(k==="iNo") hdr();
+    if(k==="sVat") calc();
+    if(k==="iNo"||k==="iFrom"||k==="iTo") drawMonth();
+    save();
+  });
 });
 function hdr(){ document.getElementById("hdrNo").textContent = S.iNo || "RE-…"; }
 hdr();
+
+/* ================= left edit drawer ================= */
+const drawer=document.getElementById("drawer"), backdrop=document.getElementById("backdrop");
+function openDrawer(o){
+  drawer.classList.toggle("open",o);
+  backdrop.classList.toggle("open",o);
+}
+document.getElementById("openDrawer").addEventListener("click",()=>openDrawer(true));
+document.getElementById("closeDrawer").addEventListener("click",()=>openDrawer(false));
+backdrop.addEventListener("click",()=>openDrawer(false));
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") openDrawer(false); });
 
 /* collapsible pro sections */
 document.querySelectorAll("section>h2").forEach(h=>h.addEventListener("click",()=>h.parentElement.classList.toggle("closed")));
@@ -367,9 +547,9 @@ function renderItems(){
     const row = document.createElement("div");
     row.className = "item";
     row.innerHTML = `
-      <div class="f-desc"><label>Beschreibung</label><input value=""></div>
-      <div class="f-qty"><label>Menge</label><input class="num" inputmode="decimal" value=""></div>
-      <div class="f-price"><label>Preis €</label><input class="num" inputmode="decimal" value=""></div>
+      <div class="f-desc"><label>${t("Beschreibung")}</label><input value=""></div>
+      <div class="f-qty"><label>${t("Menge")}</label><input class="num" inputmode="decimal" value=""></div>
+      <div class="f-price"><label>${t("Preis €")}</label><input class="num" inputmode="decimal" value=""></div>
       <div class="amt"></div>
       <button class="del" type="button" aria-label="Position löschen">✕</button>`;
     const [d,q,p] = row.querySelectorAll("input");
@@ -394,7 +574,7 @@ function calc(){
   const vat = net*rate/100, sum = net+vat;
   document.querySelectorAll("#items .amt").forEach((el,i)=>el.textContent = eur(lineTotal(S.items[i])));
   document.getElementById("tNet").textContent = eur(net);
-  document.getElementById("tVatLbl").textContent = `Umsatzsteuer (USt) ${rate.toLocaleString("de-AT")} %`;
+  document.getElementById("tVatLbl").textContent = `${t("Umsatzsteuer (USt)")} ${rate.toLocaleString("de-AT")} %`;
   document.getElementById("tVat").textContent = eur(vat);
   document.getElementById("tSum").textContent = eur(sum);
   document.getElementById("stripSum").textContent = eur(sum);
@@ -403,6 +583,8 @@ function calc(){
 
 /* ================= EASY MODE ================= */
 const MONTHS=["Jänner","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+const MONTHS_EN=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const monthName=m=>(S.lang==="en"?MONTHS_EN:MONTHS)[m];
 function curMonth(){ const [y,m]=(S.iFrom||iso(prev)).split("-").map(Number); return {y,m:m-1}; }
 function setMonth(y,m){ // m: 0-11
   const from=new Date(y,m,1), to=new Date(y,m+1,0);
@@ -410,12 +592,13 @@ function setMonth(y,m){ // m: 0-11
   S.iNo=`RE-${y}-${pad(m+1)}-01`;
   S.iDate=iso(now);
   S.iDesc=`Dienstleistungen als selbständiger Transporteur im innerstaatlichen Güterverkehr (Zustelldienste Wels) gemäß Werkvertrag für den Abrechnungszeitraum ${MONTHS[m]} ${y}.`;
-  ["iFrom","iTo","iNo","iDate","iDesc"].forEach(k=>{const el=document.getElementById(k); if(el) el.value=S[k];});
+  ["iFrom","iTo","iNo","iDate","iDesc"].forEach(k=>
+    document.querySelectorAll(`[data-k="${k}"]`).forEach(el=>el.value=S[k]));
   hdr(); drawMonth(); save();
 }
 function drawMonth(){
   const {y,m}=curMonth();
-  document.getElementById("mName").textContent=`${MONTHS[m]} ${y}`;
+  document.getElementById("mName").textContent=`${monthName(m)} ${y}`;
   document.getElementById("mRange").textContent=`${deDate(S.iFrom)} – ${deDate(S.iTo)} · ${S.iNo}`;
 }
 document.getElementById("mPrev").addEventListener("click",()=>{const {y,m}=curMonth(); setMonth(m===0?y-1:y, m===0?11:m-1);});
@@ -445,16 +628,16 @@ function renderEasy(){
     const top=document.createElement("div"); top.className="top";
     top.innerHTML=`<span class="name"></span><span class="unit"></span>`;
     top.querySelector(".name").textContent=it.d||"(ohne Namen)";
-    top.querySelector(".unit").textContent = flat ? "Pauschale" : `à € ${it.p}`;
+    top.querySelector(".unit").textContent = flat ? t("Pauschale") : `${t("à")} € ${it.p}`;
 
     const mid=document.createElement("div"); mid.className="mid";
     const big=document.createElement("div"); big.className="bigval";
     const lt=document.createElement("div"); lt.className="lt";
     const refresh=()=>{
       big.innerHTML = flat
-        ? `${eur(toNum(it.p))}<small>BETRAG</small>`
-        : `${toNum(it.q)}<small>MENGE</small>`;
-      lt.textContent = "Summe: " + eur(lineTotal(it));
+        ? `${eur(toNum(it.p))}<small>${t("BETRAG")}</small>`
+        : `${toNum(it.q)}<small>${t("MENGE")}</small>`;
+      lt.textContent = t("Summe:") + " " + eur(lineTotal(it));
       calc();
     };
     const steps = flat
@@ -518,7 +701,7 @@ function enableDrag(card, handle, idx){
 
 /* ================= PDF ================= */
 document.getElementById("makePdf").addEventListener("click",()=>{
-  if(!window.jspdf){ alert("PDF-Bibliothek lädt noch — bitte kurz warten (Internet nötig beim ersten Mal)."); return; }
+  if(!window.jspdf){ alert(t("PDF-Bibliothek lädt noch — bitte kurz warten (Internet nötig beim ersten Mal).")); return; }
   const {net,vat,sum,rate} = calc();
   const NAVY=[26,60,94], LINE=[200,210,220], LIGHT=[238,242,246];
   const doc = new jspdf.jsPDF({unit:"mm",format:"a4"});
@@ -591,6 +774,7 @@ document.getElementById("makePdf").addEventListener("click",()=>{
 /* ================= init ================= */
 renderItems();
 renderEasy();
+applyLang();
 setMode(S.mode==="pro"?"pro":"easy");
 
 /* ================= PWA ================= */
