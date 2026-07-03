@@ -1,12 +1,17 @@
 {
-  "name": "Rechnungs-Maker",
-  "short_name": "Rechnung",
-  "description": "Rechnung ausfüllen und als PDF exportieren",
+  "name": "FAKTURA — Rechnungen für Zustellung & Transport",
+  "short_name": "FAKTURA",
+  "description": "Rechnung ausfüllen und als PDF exportieren — professionell, offline, ohne Konto.",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#eef1f4",
-  "theme_color": "#16283b",
+  "background_color": "#f2f4f7",
+  "theme_color": "#0e1f33",
   "icons": [
-    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
   ]
 }
