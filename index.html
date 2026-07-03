@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rechnungs-Maker · Mubeen Khalid</title>
+<meta name="theme-color" content="#16283b">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root{
+    --ink:#16283b;        /* deep dispatch navy */
+    --ink-2:#3d566e;
+    --line:#ccd6e0;
+    --paper:#eef1f4;      /* cool depot grey */
+    --card:#ffffff;
+    --signal:#ff5c1f;     /* hi-vis courier orange, spent only on the sum strip */
+    --ok:#1f7a4d;
+    --mono:"IBM Plex Mono","Cascadia Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:var(--sans);color:var(--ink);background:var(--paper);
+    background-image:linear-gradient(transparent 31px,rgba(22,40,59,.045) 32px);
+    background-size:100% 32px;
+    padding-bottom:110px;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:0 14px}
+
+  /* ---------- header: waybill strip ---------- */
+  header{
+    background:var(--ink);color:#fff;
+    padding:calc(14px + env(safe-area-inset-top)) 0 14px;
+    border-bottom:4px solid var(--signal);
+  }
+  header .wrap{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  header h1{font-size:1.05rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
+  header h1 span{color:var(--signal)}
+  header .no{font-family:var(--mono);font-size:.8rem;opacity:.85}
+
+  /* ---------- sections styled as form blocks ---------- */
+  section{
+    background:var(--card);border:1px solid var(--line);border-radius:8px;
+    margin:14px 0;overflow:hidden;
+  }
+  section>h2{
+    font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;font-weight:700;
+    color:var(--ink-2);background:#f6f8fa;border-bottom:1px solid var(--line);
+    padding:9px 14px;display:flex;justify-content:space-between;align-items:center;
+    cursor:pointer;user-select:none;
+  }
+  section>h2 .chev{transition:transform .18s;font-size:.85rem}
+  section.closed>h2 .chev{transform:rotate(-90deg)}
+  section.closed .body{display:none}
+  .body{padding:12px 14px 14px}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid .full{grid-column:1/-1}
+  @media(max-width:520px){.grid{grid-template-columns:1fr}}
+
+  label{display:block;font-size:.72rem;font-weight:600;color:var(--ink-2);margin-bottom:3px;letter-spacing:.03em}
+  input,textarea{
+    width:100%;border:1px solid var(--line);border-radius:6px;background:#fff;
+    padding:9px 10px;font-size:16px;font-family:var(--sans);color:var(--ink);
+  }
+  input.num{font-family:var(--mono);text-align:right}
+  textarea{resize:vertical;min-height:58px}
+  input:focus,textarea:focus,button:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+
+  /* ---------- line items ---------- */
+  .item{
+    display:grid;grid-template-columns:1fr 64px 86px 96px 34px;gap:8px;
+    align-items:end;padding:10px 0;border-bottom:1px dashed var(--line);
+  }
+  .item:last-of-type{border-bottom:none}
+  .item .amt{font-family:var(--mono);text-align:right;font-size:.85rem;padding-bottom:10px;white-space:nowrap}
+  .item .del{
+    border:1px solid var(--line);background:#fff;border-radius:6px;height:38px;
+    color:#a33;font-size:1rem;cursor:pointer;
+  }
+  @media(max-width:560px){
+    .item{grid-template-columns:1fr 1fr;grid-template-areas:"desc desc" "qty price" "amt del"}
+    .item .f-desc{grid-area:desc}.item .f-qty{grid-area:qty}.item .f-price{grid-area:price}
+    .item .amt{grid-area:amt;align-self:center;padding:0}.item .del{grid-area:del;justify-self:end;width:60px}
+  }
+  .addrow{
+    margin-top:10px;width:100%;padding:10px;border:1px dashed var(--ink-2);border-radius:6px;
+    background:transparent;color:var(--ink-2);font-weight:600;font-size:.85rem;cursor:pointer;
+  }
+  .hint{font-size:.72rem;color:var(--ink-2);margin-top:8px}
+
+  .totals{border-top:2px solid var(--ink);margin-top:12px;padding-top:10px;font-family:var(--mono);font-size:.9rem}
+  .totals div{display:flex;justify-content:space-between;padding:3px 0}
+  .totals .sum{font-weight:700;font-size:1rem}
+
+  /* ---------- signature element: hi-vis sum strip ---------- */
+  .strip{
+    position:fixed;left:0;right:0;bottom:0;z-index:50;
+    background:var(--ink);color:#fff;
+    padding:10px 0 calc(10px + env(safe-area-inset-bottom));
+    border-top:4px solid var(--signal);
+    box-shadow:0 -6px 18px rgba(22,40,59,.25);
+  }
+  .strip .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .strip .t{font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;opacity:.75}
+  .strip .v{font-family:var(--mono);font-size:1.3rem;font-weight:700;color:var(--signal)}
+  .strip button{
+    background:var(--signal);color:#fff;border:none;border-radius:8px;
+    padding:12px 20px;font-size:.95rem;font-weight:700;letter-spacing:.04em;cursor:pointer;
+  }
+  .strip button:active{transform:translateY(1px)}
+  .saved{font-size:.68rem;color:var(--ok);font-family:var(--mono)}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>Rechnungs<span>·</span>Maker</h1>
+    <div class="no" id="hdrNo">RE-…</div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="sSender" class="closed">
+    <h2>Absender (einmal ausfüllen — wird gespeichert) <span class="chev">▾</span></h2>
+    <div class="body grid">
+      <div><label>Name</label><input id="sName" data-k="sName"></div>
+      <div><label>Tätigkeit</label><input id="sJob" data-k="sJob"></div>
+      <div class="full"><label>Straße, Nr.</label><input id="sStreet" data-k="sStreet"></div>
+      <div><label>PLZ, Ort</label><input id="sCity" data-k="sCity"></div>
+      <div><label>GISA-Zahl</label><input id="sGisa" data-k="sGisa"></div>
+      <div><label>Rider-ID</label><input id="sRider" data-k="sRider"></div>
+      <div><label>USt / Kleinunternehmer</label><input id="sVat" data-k="sVat" placeholder="0" class="num" inputmode="decimal"></div>
+    </div>
+  </section>
+
+  <section id="sRecip">
+    <h2>Empfänger <span class="chev">▾</span></h2>
+    <div class="body grid">
+      <div class="full"><label>Firma / Name</label><input id="rName" data-k="rName"></div>
+      <div class="full"><label>Adresse (Straße, PLZ, Ort)</label><textarea id="rAddr" data-k="rAddr"></textarea></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Rechnungsdaten <span class="chev">▾</span></h2>
+    <div class="body grid">
+      <div><label>Rechnungsnummer</label><input id="iNo" data-k="iNo"></div>
+      <div><label>Rechnungsdatum</label><input id="iDate" data-k="iDate" type="date"></div>
+      <div><label>Leistungszeitraum von</label><input id="iFrom" data-k="iFrom" type="date"></div>
+      <div><label>Leistungszeitraum bis</label><input id="iTo" data-k="iTo" type="date"></div>
+      <div class="full"><label>Leistungsbeschreibung</label><textarea id="iDesc" data-k="iDesc"></textarea></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Positionen <span class="chev">▾</span></h2>
+    <div class="body">
+      <div id="items"></div>
+      <button class="addrow" id="addItem" type="button">＋ Position hinzufügen</button>
+      <p class="hint">Menge leer lassen = Pauschalbetrag (z. B. Trinkgeld): dann zählt „Preis" als Gesamtbetrag.</p>
+      <div class="totals">
+        <div><span>Netto-Gesamtbetrag</span><span id="tNet">€ 0,00</span></div>
+        <div><span id="tVatLbl">Umsatzsteuer (USt) 0 %</span><span id="tVat">€ 0,00</span></div>
+        <div class="sum"><span>ZU ZAHLEN</span><span id="tSum">€ 0,00</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="sBank" class="closed">
+    <h2>Bankverbindung (wird gespeichert) <span class="chev">▾</span></h2>
+    <div class="body grid">
+      <div><label>Kontoinhaber</label><input id="bOwner" data-k="bOwner"></div>
+      <div><label>BIC</label><input id="bBic" data-k="bBic"></div>
+      <div class="full"><label>IBAN</label><input id="bIban" data-k="bIban" class="num" style="text-align:left"></div>
+      <div class="full"><label>Verwendungszweck</label><input id="bRef" data-k="bRef"></div>
+    </div>
+  </section>
+
+</main>
+
+<div class="strip">
+  <div class="wrap">
+    <div>
+      <div class="t">Gesamtbetrag</div>
+      <div class="v" id="stripSum">€ 0,00</div>
+      <div class="saved" id="savedNote"></div>
+    </div>
+    <button id="makePdf" type="button">PDF erstellen</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ================= state ================= */
+const LS = "invoiceMaker.v1";
+const now = new Date();
+const prev = new Date(now.getFullYear(), now.getMonth()-1, 1);
+const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+const iso = d => d.toISOString().slice(0,10);
+const pad = n => String(n).padStart(2,"0");
+
+const DEFAULTS = {
+  sName:"Mubeen Khalid", sJob:"Güterbeförderung mit Kraftfahrzeugen",
+  sStreet:"Friedhofstraße 73/2", sCity:"4600 Wels, Österreich",
+  sGisa:"39759221", sRider:"4664809", sVat:"0",
+  rName:"3PL-Arli-Khalid-Mubeen WLS", rAddr:"",
+  iNo:`RE-${prev.getFullYear()}-${pad(prev.getMonth()+1)}-01`,
+  iDate: iso(now), iFrom: iso(prev), iTo: iso(prevEnd),
+  iDesc:"Dienstleistungen als selbständiger Transporteur im innerstaatlichen Güterverkehr (Zustelldienste Wels) gemäß Werkvertrag.",
+  bOwner:"Mubeen Khalid", bIban:"", bBic:"", bRef:"",
+  items:[
+    {d:"Zustellungen / Base Order Pay (inkl. Weighted)", q:"276", p:"5,70"},
+    {d:"Shifts Done Bonus", q:"276", p:"0,20"},
+    {d:"KT20 Bonus", q:"276", p:"0,20"},
+    {d:"Kunden-Trinkgeld (App Tips)", q:"", p:"119,50"}
+  ]
+};
+let S = load();
+function load(){
+  try{ const s = JSON.parse(localStorage.getItem(LS)); if(s && s.items) return s; }catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULTS));
+}
+let saveTimer;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    try{ localStorage.setItem(LS, JSON.stringify(S));
+      document.getElementById("savedNote").textContent = "✓ gespeichert";
+      setTimeout(()=>document.getElementById("savedNote").textContent="",1500);
+    }catch(e){}
+  },400);
+}
+
+/* ================= number helpers (AT format) ================= */
+const toNum = v => { const n = parseFloat(String(v??"").replace(/\./g,"").replace(",",".")); return isNaN(n)?0:n; };
+const eur = n => "€ " + n.toLocaleString("de-AT",{minimumFractionDigits:2,maximumFractionDigits:2});
+const deDate = s => { if(!s) return ""; const [y,m,d]=s.split("-"); return `${d}.${m}.${y}`; };
+
+/* ================= bind simple fields ================= */
+document.querySelectorAll("[data-k]").forEach(el=>{
+  el.value = S[el.dataset.k] ?? "";
+  el.addEventListener("input",()=>{ S[el.dataset.k]=el.value; if(el.id==="iNo") hdr(); if(el.id==="sVat") calc(); save(); });
+});
+function hdr(){ document.getElementById("hdrNo").textContent = S.iNo || "RE-…"; }
+hdr();
+
+/* ================= collapsible sections ================= */
+document.querySelectorAll("section>h2").forEach(h=>h.addEventListener("click",()=>h.parentElement.classList.toggle("closed")));
+
+/* ================= line items ================= */
+const itemsBox = document.getElementById("items");
+function lineTotal(it){ return it.q==="" ? toNum(it.p) : toNum(it.q)*toNum(it.p); }
+function renderItems(){
+  itemsBox.innerHTML = "";
+  S.items.forEach((it,i)=>{
+    const row = document.createElement("div");
+    row.className = "item";
+    row.innerHTML = `
+      <div class="f-desc"><label>Beschreibung</label><input value=""></div>
+      <div class="f-qty"><label>Menge</label><input class="num" inputmode="decimal" value=""></div>
+      <div class="f-price"><label>Preis €</label><input class="num" inputmode="decimal" value=""></div>
+      <div class="amt"></div>
+      <button class="del" type="button" aria-label="Position löschen">✕</button>`;
+    const [d,q,p] = row.querySelectorAll("input");
+    d.value = it.d; q.value = it.q; p.value = it.p;
+    d.addEventListener("input",()=>{it.d=d.value; save();});
+    q.addEventListener("input",()=>{it.q=q.value; calc(); save();});
+    p.addEventListener("input",()=>{it.p=p.value; calc(); save();});
+    row.querySelector(".del").addEventListener("click",()=>{S.items.splice(i,1); renderItems(); calc(); save();});
+    itemsBox.appendChild(row);
+  });
+  calc();
+}
+document.getElementById("addItem").addEventListener("click",()=>{
+  S.items.push({d:"",q:"",p:""}); renderItems(); save();
+  itemsBox.lastElementChild.querySelector("input").focus();
+});
+
+/* ================= totals ================= */
+function calc(){
+  const net = S.items.reduce((a,it)=>a+lineTotal(it),0);
+  const rate = toNum(S.sVat);
+  const vat = net*rate/100, sum = net+vat;
+  document.querySelectorAll(".amt").forEach((el,i)=>el.textContent = eur(lineTotal(S.items[i])));
+  document.getElementById("tNet").textContent = eur(net);
+  document.getElementById("tVatLbl").textContent = `Umsatzsteuer (USt) ${rate.toLocaleString("de-AT")} %`;
+  document.getElementById("tVat").textContent = eur(vat);
+  document.getElementById("tSum").textContent = eur(sum);
+  document.getElementById("stripSum").textContent = eur(sum);
+  return {net,vat,sum,rate};
+}
+renderItems();
+
+/* ================= PDF ================= */
+document.getElementById("makePdf").addEventListener("click",()=>{
+  if(!window.jspdf){ alert("PDF-Bibliothek lädt noch — bitte kurz warten (Internet nötig beim ersten Mal)."); return; }
+  const {net,vat,sum,rate} = calc();
+  const NAVY=[26,60,94], LINE=[200,210,220], LIGHT=[238,242,246];
+  const doc = new jspdf.jsPDF({unit:"mm",format:"a4"});
+  const W=210, L=20, R=W-20; let y=20;
+
+  // header
+  doc.setFont("helvetica","bold").setFontSize(22).setTextColor(...NAVY).text("RECHNUNG",L,y+6);
+  doc.setFont("helvetica","normal").setFontSize(9).setTextColor(40);
+  doc.text([S.sName,S.sJob,S.sStreet,S.sCity,"GISA-Zahl: "+S.sGisa].filter(Boolean),R,y,{align:"right"});
+  y+=26; doc.setDrawColor(...NAVY).setLineWidth(.8).line(L,y,R,y); y+=8;
+
+  // recipient + meta
+  doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(...NAVY).text("EMPFÄNGER",L,y);
+  doc.setFont("helvetica","normal").setFontSize(9.5).setTextColor(20);
+  const rec=[S.rName,...(S.rAddr||"").split("\n")].filter(Boolean);
+  doc.text(rec,L,y+5);
+  const meta=[["Rechnungsnummer:",S.iNo],["Rechnungsdatum:",deDate(S.iDate)],
+              ["Leistungszeitraum:",deDate(S.iFrom)+" – "+deDate(S.iTo)],["Rider-ID:",S.sRider]];
+  let my=y;
+  meta.forEach(([k,v])=>{ doc.setFont("helvetica","bold").setFontSize(9).text(k,118,my);
+    doc.setFont("helvetica","normal").text(String(v||""),152,my); my+=5.5; });
+  y=Math.max(y+5+rec.length*4.5,my)+6;
+
+  // description
+  doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(...NAVY).text("LEISTUNGSBESCHREIBUNG",L,y); y+=4.5;
+  doc.setFont("helvetica","normal").setFontSize(9.5).setTextColor(20);
+  const desc=doc.splitTextToSize(S.iDesc||"",R-L); doc.text(desc,L,y); y+=desc.length*4.6+4;
+
+  // items table
+  const body=S.items.filter(it=>it.d||it.p).map((it,i)=>[String(i+1),it.d,
+    it.q===""?"pauschal":it.q, it.q===""?"—":eur(toNum(it.p)).replace("€ ","€ "), eur(lineTotal(it))]);
+  doc.autoTable({
+    startY:y, margin:{left:L,right:20},
+    head:[["Pos.","Beschreibung","Menge","Einzelpreis","Gesamtbetrag"]], body,
+    styles:{font:"helvetica",fontSize:9,cellPadding:2.4,lineColor:LINE,lineWidth:.2,textColor:20},
+    headStyles:{fillColor:NAVY,textColor:255,fontStyle:"bold"},
+    alternateRowStyles:{fillColor:LIGHT},
+    columnStyles:{0:{cellWidth:12,halign:"center"},2:{cellWidth:22,halign:"right"},
+                  3:{cellWidth:26,halign:"right"},4:{cellWidth:30,halign:"right"}}
+  });
+  y=doc.lastAutoTable.finalY;
+
+  // totals
+  doc.autoTable({
+    startY:y, margin:{left:98,right:20}, theme:"plain",
+    body:[["Netto-Gesamtbetrag",eur(net)],
+          [`Umsatzsteuer (USt) ${rate.toLocaleString("de-AT")} %`,eur(vat)],
+          ["ZU ZAHLENDER GESAMTBETRAG",eur(sum)]],
+    styles:{font:"helvetica",fontSize:9,cellPadding:2.2,textColor:20},
+    columnStyles:{1:{halign:"right"}},
+    didParseCell:d=>{ if(d.row.index===2){ d.cell.styles.fillColor=NAVY; d.cell.styles.textColor=255;
+      d.cell.styles.fontStyle="bold"; d.cell.styles.fontSize=10; } }
+  });
+  y=doc.lastAutoTable.finalY+10;
+
+  // bank
+  doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(...NAVY).text("BANKVERBINDUNG",L,y); y+=4.5;
+  doc.setFontSize(9).setTextColor(20);
+  [["Kontoinhaber:",S.bOwner],["IBAN:",S.bIban],["BIC:",S.bBic],
+   ["Verwendungszweck:",S.bRef||("Rider-ID "+S.sRider+" / Rechnung "+S.iNo)]].forEach(([k,v])=>{
+    doc.setFont("helvetica","bold").text(k,L,y); doc.setFont("helvetica","normal").text(String(v||""),58,y); y+=5.2;
+  });
+  y+=4; doc.setDrawColor(...LINE).setLineWidth(.3).line(L,y,R,y); y+=5;
+
+  // legal clause (only when 0 %)
+  if(rate===0){
+    doc.setFontSize(8).setTextColor(85);
+    const legal=doc.splitTextToSize("Rechtlicher Hinweis: Es wird keine Umsatzsteuer ausgewiesen, da der Rechnungsaussteller als Kleinunternehmer gemäß § 6 Abs. 1 Z 27 UStG umsatzsteuerbefreit ist. (No VAT is charged as the sender qualifies for the small business exemption.)",R-L);
+    doc.text(legal,L,y); y+=legal.length*3.6+8;
+  }
+  doc.setFontSize(9.5).setTextColor(20).text("Vielen Dank für die gute Zusammenarbeit!",L,y); y+=18;
+  doc.line(L,y,L+55,y); doc.setFont("helvetica","bold").text(S.sName,L,y+5);
+
+  doc.save((S.iNo||"Rechnung")+".pdf");
+});
+
+/* ================= PWA ================= */
+if("serviceWorker" in navigator && location.protocol==="https:")
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
