@@ -13,6 +13,7 @@ A small web & mobile app (PWA): enter your numbers → download a finished invoi
 - Alle Eingaben werden lokal im Browser gespeichert (localStorage) — beim nächsten Mal ist alles noch da
 - PDF-Erstellung komplett im Browser (jsPDF) — keine Daten verlassen das Gerät
 - Installierbar als App auf dem Handy (PWA), funktioniert nach dem ersten Laden auch offline
+- **PDF-Import (⬆ Import):** Eine früher erstellte Rechnung hochladen und alle Felder werden automatisch ausgefüllt — in jedem erzeugten PDF sind die Rechnungsdaten unsichtbar eingebettet, ältere PDFs werden per Texterkennung gelesen
 
 ## Nutzung / Usage
 

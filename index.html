@@ -341,7 +341,9 @@
         <button id="langDe" type="button" class="on">DE</button>
         <button id="langEn" type="button">EN</button>
       </div>
+      <button class="chip-btn" id="importBtn" type="button" aria-label="Rechnung importieren">⬆ Import</button>
       <button class="chip-btn" id="openDrawer" type="button" aria-label="Daten bearbeiten">✎ Daten</button>
+      <input type="file" id="importFile" accept="application/pdf" hidden>
     </div>
   </div>
 </div>
@@ -554,17 +556,20 @@ function load(){
   return JSON.parse(JSON.stringify(DEFAULTS));
 }
 let saveTimer;
-function save(){
+function save(quiet){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{
     try{
       localStorage.setItem(LS, JSON.stringify(S));
-      const tst=document.getElementById("toast");
-      tst.textContent = t("✓ Gespeichert");
-      tst.classList.add("show");
-      clearTimeout(save._t); save._t=setTimeout(()=>tst.classList.remove("show"),1300);
+      if(!quiet) showToast(t("✓ Gespeichert"));
     }catch(e){}
   },400);
+}
+
+function showToast(msg){
+  const tst=document.getElementById("toast");
+  tst.textContent=msg; tst.classList.add("show");
+  clearTimeout(showToast._t); showToast._t=setTimeout(()=>tst.classList.remove("show"),1400);
 }
 
 /* ================= number helpers (AT format) ================= */
@@ -603,6 +608,10 @@ const EN_MAP = {
     "⠿ press and drag to reorder line items",
   "Pauschale":"Flat amount","à":"at","MENGE":"COUNT","BETRAG":"AMOUNT",
   "✓ Gespeichert":"✓ Saved",
+  "⬆ Import":"⬆ Import",
+  "✓ Rechnung importiert — alle Felder ausgefüllt":"✓ Invoice imported — all fields filled",
+  "PDF wird gelesen …":"Reading PDF …",
+  "Import fehlgeschlagen — kein FAKTURA-Rechnungs-PDF":"Import failed — not a FAKTURA invoice PDF",
   "Positionen:":"Items:",
   "Alle Daten bleiben auf diesem Gerät — keine Cloud, kein Konto.":
     "All data stays on this device — no cloud, no account.",
@@ -614,7 +623,7 @@ const t = s => (S.lang==="en" ? (EN_MAP[s] ?? s) : s);
 const i18nNodes = [];
 document.querySelectorAll(
   "label, section>h2, .easyhint, .hint, .hero-label, .sec-title h3, .dhead h3, " +
-  "#makePdf span, #addItem, #openDrawer, #mEasy, #mPro, .totals div span:first-child, " +
+  "#makePdf span, #addItem, #openDrawer, #importBtn, #mEasy, #mPro, .totals div span:first-child, " +
   ".hello .hi, .foot .priv"
 ).forEach(el=>{
   const n = el.firstChild;
@@ -872,6 +881,88 @@ function enableDrag(tile, grip, idx){
   });
 }
 
+/* ================= import a generated Rechnung PDF ================= */
+let pdfjsReady;
+function loadPdfJs(){
+  if(window.pdfjsLib){
+    if(!pdfjsLib.GlobalWorkerOptions.workerSrc)
+      pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    return Promise.resolve();
+  }
+  if(pdfjsReady) return pdfjsReady;
+  pdfjsReady = new Promise((res,rej)=>{
+    const sc=document.createElement("script");
+    sc.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    sc.onload=()=>{ pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; res(); };
+    sc.onerror=()=>{ pdfjsReady=null; rej(new Error("pdf.js load failed")); };
+    document.head.appendChild(sc);
+  });
+  return pdfjsReady;
+}
+
+function applyImport(d){
+  const keys=["sName","sJob","sStreet","sCity","sGisa","sRider","sVat",
+              "rName","rAddr","iNo","iDate","iFrom","iTo","iDesc",
+              "bOwner","bIban","bBic","bRef"];
+  keys.forEach(k=>{ if(d[k]!=null && d[k]!=="") S[k]=String(d[k]); });
+  if(Array.isArray(d.items)&&d.items.length)
+    S.items=d.items.map(it=>({d:String(it.d||""),q:String(it.q??""),p:String(it.p||"0,00")}));
+  document.querySelectorAll("[data-k]").forEach(el=>el.value=S[el.dataset.k]??"");
+  greet(); renderItems(); renderEasy(); drawMonth(); save(true);
+  showToast(t("✓ Rechnung importiert — alle Felder ausgefüllt"));
+}
+
+/* best-effort text parsing for PDFs generated before data embedding existed */
+function parseInvoiceText(txt){
+  const g=re=>{const m=txt.match(re);return m?m[1].trim():null;};
+  const de2iso=v=>{const m=(v||"").match(/(\d{2})\.(\d{2})\.(\d{4})/);return m?`${m[3]}-${m[2]}-${m[1]}`:null;};
+  const d={};
+  d.iNo=g(/Rechnungsnummer:\s*\n?\s*([^\n]+)/);
+  const dat=g(/Rechnungsdatum:\s*\n?\s*([\d.]+)/); if(dat) d.iDate=de2iso(dat);
+  const per=txt.match(/Leistungszeitraum:\s*\n?\s*(\d{2}\.\d{2}\.\d{4})\s*[–\-]\s*(\d{2}\.\d{2}\.\d{4})/);
+  if(per){ d.iFrom=de2iso(per[1]); d.iTo=de2iso(per[2]); }
+  d.sGisa=g(/GISA-Zahl:\s*\n?\s*(\d+)/);
+  d.bIban=g(/IBAN:\s*\n?\s*([A-Z]{2}[0-9 ]{10,32})/);
+  d.bBic=g(/BIC:\s*\n?\s*([A-Z0-9]{6,11})/);
+  d.bOwner=g(/Kontoinhaber:\s*\n?\s*([^\n]+)/);
+  d.bRef=g(/Verwendungszweck:\s*\n?\s*([^\n]+)/);
+  const items=[]; let m;
+  const re=/(?:^|\n)(\d{1,2})\n([^\n]+)\n(\d+|pauschal)\n(?:€\s?([\d.,]+)|—)\n€\s?([\d.,]+)/g;
+  while((m=re.exec(txt))){
+    if(m[3]==="pauschal") items.push({d:m[2],q:"",p:m[5]});
+    else items.push({d:m[2],q:m[3],p:m[4]||m[5]});
+  }
+  if(items.length) d.items=items;
+  return (d.iNo||items.length)?d:null;
+}
+
+document.getElementById("importBtn").addEventListener("click",()=>document.getElementById("importFile").click());
+document.getElementById("importFile").addEventListener("change",async e=>{
+  const f=e.target.files[0]; e.target.value="";
+  if(!f) return;
+  showToast(t("PDF wird gelesen …"));
+  try{
+    await loadPdfJs();
+    const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+    const md=await pdf.getMetadata().catch(()=>null);
+    const kw=(md&&md.info&&md.info.Keywords)||"";
+    if(kw.startsWith("FAKTURA1:")){
+      applyImport(JSON.parse(decodeURIComponent(kw.slice(9))));
+      return;
+    }
+    let text="";
+    for(let i=1;i<=pdf.numPages;i++){
+      const tc=await (await pdf.getPage(i)).getTextContent();
+      text+=tc.items.map(x=>x.str).join("\n")+"\n";
+    }
+    const d=parseInvoiceText(text);
+    if(d) applyImport(d);
+    else showToast(t("Import fehlgeschlagen — kein FAKTURA-Rechnungs-PDF"));
+  }catch(err){
+    showToast(t("Import fehlgeschlagen — kein FAKTURA-Rechnungs-PDF"));
+  }
+});
+
 /* ================= PDF ================= */
 function makePdf(){
   if(!window.jspdf){ alert(t("PDF-Bibliothek lädt noch — bitte kurz warten (Internet nötig beim ersten Mal).")); return; }
@@ -947,7 +1038,22 @@ function makePdf(){
     doc.text(legal,L,y);
   }
 
+  /* embed the complete invoice data invisibly, so PDFs can be re-imported 1:1 */
+  doc.setProperties({
+    title:"Rechnung "+(S.iNo||""), subject:"FAKTURA Rechnung", creator:"FAKTURA",
+    keywords:"FAKTURA1:"+encodeURIComponent(JSON.stringify(exportState()))
+  });
+
   doc.save((S.iNo||"Rechnung")+".pdf");
+}
+
+function exportState(){
+  const keys=["sName","sJob","sStreet","sCity","sGisa","sRider","sVat",
+              "rName","rAddr","iNo","iDate","iFrom","iTo","iDesc",
+              "bOwner","bIban","bBic","bRef"];
+  const d={items:S.items.map(it=>({d:it.d,q:it.q,p:it.p}))};
+  keys.forEach(k=>d[k]=S[k]??"");
+  return d;
 }
 document.getElementById("makePdf").addEventListener("click",makePdf);
 document.getElementById("fabPdf").addEventListener("click",makePdf);
