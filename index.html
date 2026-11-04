@@ -342,6 +342,7 @@
         <button id="langEn" type="button">EN</button>
       </div>
       <button class="chip-btn" id="importBtn" type="button" aria-label="Rechnung importieren">⬆ Import</button>
+      <button class="chip-btn" id="newInvoiceBtn" type="button" title="Neue Rechnung beginnen">＋ Neu</button>
       <button class="chip-btn" id="openDrawer" type="button" aria-label="Daten bearbeiten">✎ Daten</button>
       <input type="file" id="importFile" accept="application/pdf" hidden>
     </div>
@@ -471,7 +472,7 @@
     <div class="body">
       <div id="items"></div>
       <button class="addrow" id="addItem" type="button">＋ Position hinzufügen</button>
-      <p class="hint">Menge leer lassen = Pauschalbetrag (z. B. Trinkgeld): dann zählt „Preis“ als Gesamtbetrag.</p>
+      <p class="hint">Menge leer lassen = Pauschalbetrag (z. B. Trinkgeld): dann zählt „Preis“ als Gesamtbetrag. Die Mengen der Bonus-Positionen folgen automatisch der Base-Order-Menge.</p>
       <div class="totals">
         <div><span>Netto-Gesamtbetrag</span><span id="tNet">€ 0,00</span></div>
         <div><span id="tVatLbl">Umsatzsteuer (USt) 0 %</span><span id="tVat">€ 0,00</span></div>
@@ -527,7 +528,7 @@ const DEFAULTS = {
   rName:"Arli\u00B4s Road House KG",
   rAddr:"Pfarrhofsberg 36\n4714 Meggenhofen\nATU76892604",
   iNo:`${prev.getFullYear()}${String(prev.getMonth()+1).padStart(3,"0")}`,
-  iDate: iso(now), iFrom: iso(prev), iTo: iso(prevEnd),
+  iDate: iso(now), iFrom: iso(prev), iTo: iso(prevEnd), iDescAuto:true,
   iDesc:"Dienstleistungen als selbständiger Transporteur im innerstaatlichen Güterverkehr (Zustelldienste Wels) gemäß Werkvertrag.",
   bOwner:"Ahsan Muhammad", bIban:"AT77 2032 0324 0288 9831", bBic:"", bRef:"",
   items:[
@@ -602,6 +603,8 @@ const EN_MAP = {
   "＋ Position hinzufügen":"＋ Add line item",
   "Menge leer lassen = Pauschalbetrag (z. B. Trinkgeld): dann zählt „Preis\u201C als Gesamtbetrag.":
     "Leave quantity empty = flat amount (e.g. tips): then \u201Cprice\u201D counts as the total.",
+  "Die Mengen der Bonus-Positionen folgen automatisch der Base-Order-Menge.":
+    "Bonus quantities automatically follow the base order quantity.",
   "Netto-Gesamtbetrag":"Net total","ZU ZAHLEN":"TOTAL DUE",
   "Umsatzsteuer (USt)":"VAT","Netto":"Net","USt":"VAT",
   "⠿ gedrückt halten und ziehen, um Positionen zu verschieben":
@@ -609,6 +612,7 @@ const EN_MAP = {
   "Pauschale":"Flat amount","à":"at","MENGE":"COUNT","BETRAG":"AMOUNT",
   "✓ Gespeichert":"✓ Saved",
   "⬆ Import":"⬆ Import",
+  "＋ Neu":"＋ New",
   "✓ Rechnung importiert — alle Felder ausgefüllt":"✓ Invoice imported — all fields filled",
   "PDF wird gelesen …":"Reading PDF …",
   "Import fehlgeschlagen — kein FAKTURA-Rechnungs-PDF":"Import failed — not a FAKTURA invoice PDF",
@@ -623,7 +627,7 @@ const t = s => (S.lang==="en" ? (EN_MAP[s] ?? s) : s);
 const i18nNodes = [];
 document.querySelectorAll(
   "label, section>h2, .easyhint, .hint, .hero-label, .sec-title h3, .dhead h3, " +
-  "#makePdf span, #addItem, #openDrawer, #importBtn, #mEasy, #mPro, .totals div span:first-child, " +
+  "#makePdf span, #addItem, #openDrawer, #importBtn, #newInvoiceBtn, #mEasy, #mPro, .totals div span:first-child, " +
   ".hello .hi, .foot .priv"
 ).forEach(el=>{
   const n = el.firstChild;
@@ -654,11 +658,14 @@ function greet(){
 function setK(k, v, src){
   S[k]=v;
   document.querySelectorAll(`[data-k="${k}"]`).forEach(el=>{ if(el!==src) el.value=v; });
+  if(k==="iFrom"||k==="iTo") syncServiceDescription();
+  if(k==="iFrom") syncInvoiceNumberToPeriod();
 }
 document.querySelectorAll("[data-k]").forEach(el=>{
   el.value = S[el.dataset.k] ?? "";
   el.addEventListener("input",()=>{
     const k=el.dataset.k;
+    if(k==="iDesc") S.iDescAuto=false;
     setK(k, el.value, el);
     if(k==="sVat") calc();
     if(k==="sName") greet();
@@ -694,6 +701,18 @@ document.querySelectorAll("section>h2").forEach(h=>h.addEventListener("click",()
 /* ================= PRO line items ================= */
 const itemsBox = document.getElementById("items");
 function lineTotal(it){ return it.q==="" ? toNum(it.p) : toNum(it.q)*toNum(it.p); }
+function isBaseOrder(it){ return /base\s*order/i.test(it.d||""); }
+function isOrderBonus(it){ return /bonus/i.test(it.d||""); }
+function syncBonusQuantities(source){
+  if(!isBaseOrder(source)) return;
+  S.items.forEach((it,index)=>{
+    if(it!==source && isOrderBonus(it)){
+      it.q=source.q;
+      const qty=itemsBox.children[index]?.querySelectorAll("input")[1];
+      if(qty) qty.value=it.q;
+    }
+  });
+}
 function renderItems(){
   itemsBox.innerHTML = "";
   S.items.forEach((it,i)=>{
@@ -708,7 +727,7 @@ function renderItems(){
     const [d,q,p] = row.querySelectorAll("input");
     d.value = it.d; q.value = it.q; p.value = it.p;
     d.addEventListener("input",()=>{it.d=d.value; save();});
-    q.addEventListener("input",()=>{it.q=q.value; calc(); save();});
+    q.addEventListener("input",()=>{it.q=q.value; syncBonusQuantities(it); renderEasy(); calc(); save();});
     p.addEventListener("input",()=>{it.p=p.value; calc(); save();});
     row.querySelector(".del").addEventListener("click",()=>{S.items.splice(i,1); renderItems(); renderEasy(); calc(); save();});
     itemsBox.appendChild(row);
@@ -754,6 +773,32 @@ function calc(){
 const MONTHS=["Jänner","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
 const MONTHS_EN=["January","February","March","April","May","June","July","August","September","October","November","December"];
 const monthName=m=>(S.lang==="en"?MONTHS_EN:MONTHS)[m];
+const SERVICE_DESC_PREFIX="Dienstleistungen als selbständiger Transporteur im innerstaatlichen Güterverkehr (Zustelldienste Wels) gemäß Werkvertrag";
+function servicePeriodLabel(){
+  if(!S.iFrom) return "";
+  const [y,m]=S.iFrom.split("-").map(Number);
+  if(!y||!m) return "";
+  return `${MONTHS[m-1]} ${y}`;
+}
+function syncServiceDescription(){
+  if(S.iDescAuto===false) return;
+  const label=servicePeriodLabel();
+  if(!label) return;
+  const current=S.iDesc||"";
+  const period=`für den Abrechnungszeitraum ${label}.`;
+  if(/für den Abrechnungszeitraum [^.]+\./i.test(current))
+    S.iDesc=current.replace(/für den Abrechnungszeitraum [^.]+\./i,period);
+  else if(current.trim().startsWith(SERVICE_DESC_PREFIX))
+    S.iDesc=`${SERVICE_DESC_PREFIX} ${period}`;
+  document.querySelectorAll('[data-k="iDesc"]').forEach(el=>el.value=S.iDesc);
+  save(true);
+}
+function syncInvoiceNumberToPeriod(){
+  const match=(S.iFrom||"").match(/^(\d{4})-(\d{2})-/);
+  if(!match || (S.iNo && !/^\d{6}$/.test(S.iNo))) return;
+  S.iNo=`${match[1]}${match[2]}`;
+  document.querySelectorAll('[data-k="iNo"]').forEach(el=>el.value=S.iNo);
+}
 function curMonth(){ const [y,m]=(S.iFrom||iso(prev)).split("-").map(Number); return {y,m:m-1}; }
 function setMonth(y,m){
   const from=new Date(y,m,1), to=new Date(y,m+1,0);
@@ -761,6 +806,7 @@ function setMonth(y,m){
   S.iNo=`${y}${String(m+1).padStart(3,"0")}`;
   S.iDate=iso(now);
   S.iDesc=`Dienstleistungen als selbständiger Transporteur im innerstaatlichen Güterverkehr (Zustelldienste Wels) gemäß Werkvertrag für den Abrechnungszeitraum ${MONTHS[m]} ${y}.`;
+  S.iDescAuto=true;
   ["iFrom","iTo","iNo","iDate","iDesc"].forEach(k=>
     document.querySelectorAll(`[data-k="${k}"]`).forEach(el=>el.value=S[k]));
   drawMonth(); save();
@@ -772,6 +818,24 @@ function drawMonth(){
 }
 document.getElementById("mPrev").addEventListener("click",()=>{const {y,m}=curMonth(); setMonth(m===0?y-1:y, m===0?11:m-1);});
 document.getElementById("mNext").addEventListener("click",()=>{const {y,m}=curMonth(); setMonth(m===11?y+1:y, m===11?0:m+1);});
+
+function startNewInvoice(){
+  const prompt=S.lang==="en"
+    ? "Start a new invoice for the next service month? Sender, recipient, bank details, item names and prices will be kept; quantities and flat amounts will be reset."
+    : "Eine neue Rechnung für den nächsten Leistungsmonat beginnen? Absender, Empfänger, Bankdaten, Positionsnamen und Preise bleiben erhalten; Mengen und Pauschalbeträge werden zurückgesetzt.";
+  if(!confirm(prompt)) return;
+  const {y,m}=curMonth();
+  const nextY=m===11?y+1:y, nextM=m===11?0:m+1;
+  const from=new Date(nextY,nextM,1), to=new Date(nextY,nextM+1,0);
+  S.iFrom=iso(from); S.iTo=iso(to); S.iNo=`${nextY}${String(nextM+1).padStart(2,"0")}`;
+  S.iDate=iso(now);
+  S.iDesc=`${SERVICE_DESC_PREFIX} für den Abrechnungszeitraum ${MONTHS[nextM]} ${nextY}.`;
+  S.items=S.items.map(it=>it.q===""?{...it,p:"0,00"}:{...it,q:"0"});
+  document.querySelectorAll("[data-k]").forEach(el=>el.value=S[el.dataset.k]??"");
+  drawMonth(); renderItems(); renderEasy(); calc(); save();
+  showToast(S.lang==="en"?"✓ New invoice started":"✓ Neue Rechnung vorbereitet");
+}
+document.getElementById("newInvoiceBtn").addEventListener("click",startNewInvoice);
 
 function pickEmoji(name,flat){
   const n=(name||"").toLowerCase();
@@ -817,6 +881,7 @@ function renderEasy(){
     const bump=s=>{
       if(flat) it.p=fmtDe(Math.max(0,toNum(it.p)+s));
       else it.q=String(Math.max(0,toNum(it.q)+s));
+      if(!flat) syncBonusQuantities(it);
       refresh(); renderItems(); save();
     };
     minus.addEventListener("click",()=>bump(flat?-0.5:-1));
@@ -905,6 +970,7 @@ function applyImport(d){
               "rName","rAddr","iNo","iDate","iFrom","iTo","iDesc",
               "bOwner","bIban","bBic","bRef"];
   keys.forEach(k=>{ if(d[k]!=null && d[k]!=="") S[k]=String(d[k]); });
+  if(d.iDesc) S.iDescAuto=false;
   if(Array.isArray(d.items)&&d.items.length)
     S.items=d.items.map(it=>({d:String(it.d||""),q:String(it.q??""),p:String(it.p||"0,00")}));
   document.querySelectorAll("[data-k]").forEach(el=>el.value=S[el.dataset.k]??"");
@@ -967,6 +1033,21 @@ document.getElementById("importFile").addEventListener("change",async e=>{
 function makePdf(){
   if(!window.jspdf){ alert(t("PDF-Bibliothek lädt noch — bitte kurz warten (Internet nötig beim ersten Mal).")); return; }
   const {net,vat,sum,rate} = calc();
+  const warnings=[];
+  if(!S.sName.trim()) warnings.push(S.lang==="en"?"Sender name is missing":"Absendername fehlt");
+  if(!S.rName.trim()) warnings.push(S.lang==="en"?"Recipient is missing":"Empfänger fehlt");
+  if(!S.iNo.trim()) warnings.push(S.lang==="en"?"Invoice number is missing":"Rechnungsnummer fehlt");
+  if(!S.iDate) warnings.push(S.lang==="en"?"Invoice date is missing":"Rechnungsdatum fehlt");
+  if(!S.iFrom||!S.iTo) warnings.push(S.lang==="en"?"Service period is incomplete":"Leistungszeitraum ist unvollständig");
+  else if(S.iFrom>S.iTo) warnings.push(S.lang==="en"?"Service period end is before its start":"Das Ende des Leistungszeitraums liegt vor dessen Beginn");
+  if(!S.iDesc.trim()) warnings.push(S.lang==="en"?"Service description is empty":"Leistungsbeschreibung ist leer");
+  if(!S.items.some(it=>it.d.trim()&&lineTotal(it)!==0)) warnings.push(S.lang==="en"?"No non-zero line item":"Keine Position mit einem Betrag ungleich null");
+  if(warnings.length){
+    const message=(S.lang==="en"?"Please review these invoice details:\n\n":"Bitte prüfe diese Rechnungsangaben:\n\n")+
+      warnings.map(w=>"• "+w).join("\n")+
+      (S.lang==="en"?"\n\nCreate the PDF anyway?":"\n\nPDF trotzdem erstellen?");
+    if(!confirm(message)) return;
+  }
   const NAVY=[26,60,94], LINE=[200,210,220], LIGHT=[238,242,246];
   const doc = new jspdf.jsPDF({unit:"mm",format:"a4"});
   const W=210, L=20, R=W-20; let y=20;
