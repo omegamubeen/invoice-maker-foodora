@@ -45,7 +45,9 @@
     font-feature-settings:"tnum";
   }
   .wrap{max-width:640px;margin:0 auto;padding:0 18px}
-  button{font-family:var(--font)}
+  /* no double-tap zoom when tapping buttons quickly (+10 / stepper) */
+  html,body,button,a,label,summary,[role=button]{touch-action:manipulation}
+  button{font-family:var(--font);-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
   button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid rgba(124,58,237,.45);outline-offset:2px}
 
   /* ---------- top bar ---------- */
@@ -63,7 +65,21 @@
   .hello .hi{font-size:.78rem;color:var(--muted);font-weight:600}
   .hello .who{font-size:1.02rem;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .top-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
-  @media(max-width:520px){.top .wrap{flex-wrap:wrap}.hello{flex:1 1 100%}.top-actions{flex:1 1 100%;justify-content:flex-start}}
+  #logoutBtn{display:grid;place-items:center;width:38px;height:38px;padding:0}
+  #logoutBtn svg{width:18px;height:18px}
+  @media(max-width:520px){
+    /* row 1: greeting + logout, row 2: language / import / new / edit */
+    .top .wrap{flex-wrap:wrap;row-gap:10px}
+    .top-actions{display:contents}
+    .hello{order:0;flex:1 1 calc(100% - 52px)}
+    #logoutBtn{order:1}
+    .langseg,.top-actions .chip-btn:not(#logoutBtn){order:2}
+    .top .wrap{column-gap:6px}
+    .top-actions .chip-btn:not(#logoutBtn){padding:9px 8px;font-size:.7rem}
+    .top .wrap{justify-content:flex-start}
+    #logoutBtn{margin-left:auto}
+    .langseg button{padding:7px 7px}
+  }
   .chip-btn{
     border:none;background:var(--surface);color:var(--ink);
     border-radius:99px;padding:10px 14px;font-size:.76rem;font-weight:700;
@@ -103,7 +119,7 @@
   .month-mid .mn{font-size:1.15rem;font-weight:800;letter-spacing:-.02em}
   .month-mid .mr{
     font-size:.64rem;font-weight:600;color:rgba(255,255,255,.75);margin-top:2px;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    white-space:normal;
   }
   .hero-label{
     margin-top:20px;font-size:.66rem;font-weight:700;letter-spacing:.16em;
@@ -400,7 +416,7 @@
       <button class="chip-btn" id="importBtn" type="button" aria-label="Rechnung importieren">⬆ Import</button>
       <button class="chip-btn" id="newInvoiceBtn" type="button" title="Neue Rechnung beginnen">＋ Neu</button>
       <button class="chip-btn" id="openDrawer" type="button" aria-label="Daten bearbeiten">✎ Daten</button>
-      <button class="chip-btn" id="logoutBtn" type="button" title="Abmelden">⎋</button>
+      <button class="chip-btn" id="logoutBtn" type="button" title="Abmelden" aria-label="Abmelden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></button>
       <input type="file" id="importFile" accept="application/pdf" hidden>
     </div>
   </div>
