@@ -1,8 +1,9 @@
 // Simple offline cache for the invoice maker PWA
-const CACHE = "invoice-maker-v12";
+const CACHE = "invoice-maker-v13";
 const ASSETS = [
   "./",
   "./index.html",
+  "./users.js",
   "./manifest.json",
   "./icons/icon.svg",
   "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
@@ -20,11 +21,19 @@ self.addEventListener("activate", e => {
   ).then(() => self.clients.claim()));
 });
 self.addEventListener("fetch", e => {
-  e.respondWith(
-    caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
-      const copy = res.clone();
-      caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
-      return res;
-    }).catch(() => caches.match("./index.html")))
+  const sameOrigin = new URL(e.request.url).origin === location.origin;
+  // own files (incl. users.js): network first so edits show up; cache only as offline fallback
+  // CDN files: cache first
+  e.respondWith(sameOrigin
+    ? fetch(e.request).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+        return res;
+      }).catch(() => caches.match(e.request).then(hit => hit || caches.match("./index.html")))
+    : caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+        return res;
+      }).catch(() => caches.match("./index.html")))
   );
 });

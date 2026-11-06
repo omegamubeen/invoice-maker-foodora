@@ -39,11 +39,24 @@ git push -u origin main
 # Dann auf GitHub: Settings → Pages → Branch: main → Save
 ```
 
+## Login / Benutzer
+
+Die Benutzer werden von Hand in `users.js` eingetragen (Benutzername, Anzeigename, Passwort-Hash). Passwort-Hash erzeugen:
+
+```bash
+printf '%s' 'foodora-invoice:<benutzername>:<passwort>' | sha256sum
+```
+
+Pro Benutzer werden die Rechnungsdaten getrennt im Browser gespeichert; `defaults` in `users.js` die Vorausfüllung (Absender, Bank …) pro Benutzer ändern. Neue Benutzer starten mit leeren Feldern (`BLANK_DEFAULTS`) und tragen ihre Daten beim ersten Login selbst ein.
+
+> Hinweis: Die App ist eine statische Seite (GitHub Pages) ohne Server. Das Login ist eine Zugangssperre im Browser, kein echter Schutz — die Hashes sind im Quelltext sichtbar. Daher lange Passwörter verwenden.
+
 ## Projektstruktur
 
 ```
 invoice-maker/
 ├── index.html      # komplette App (UI + Logik + PDF-Erstellung)
+├── users.js        # Benutzerliste (Login)
 ├── manifest.json   # PWA-Manifest (App-Name, Icon, Farben)
 ├── sw.js           # Service Worker (Offline-Cache)
 ├── icons/
