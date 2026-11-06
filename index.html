@@ -409,6 +409,7 @@
       <div class="full"><label>Tätigkeit</label><input data-k="sJob"></div>
       <div class="full"><label>Straße, Nr.</label><input data-k="sStreet"></div>
       <div><label>PLZ, Ort</label><input data-k="sCity"></div>
+      <div><label>Telefon</label><input data-k="sPhone" type="tel"></div>
       <div><label>GISA-Zahl</label><input data-k="sGisa"></div>
       <div><label>Rider-ID</label><input data-k="sRider"></div>
       <div><label>USt %</label><input data-k="sVat" class="num" inputmode="decimal"></div>
@@ -487,6 +488,7 @@
       <div><label>Tätigkeit</label><input id="sJob" data-k="sJob"></div>
       <div class="full"><label>Straße, Nr.</label><input id="sStreet" data-k="sStreet"></div>
       <div><label>PLZ, Ort</label><input id="sCity" data-k="sCity"></div>
+      <div><label>Telefon</label><input id="sPhone" data-k="sPhone" type="tel"></div>
       <div><label>GISA-Zahl</label><input id="sGisa" data-k="sGisa"></div>
       <div><label>Rider-ID</label><input id="sRider" data-k="sRider"></div>
       <div><label>USt / Kleinunternehmer</label><input id="sVat" data-k="sVat" placeholder="0" class="num" inputmode="decimal"></div>
@@ -613,7 +615,6 @@ const AUTH = (()=>{
 "use strict";
 /* ================= state ================= */
 const LS = "invoiceMaker.v3" + (AUTH.user ? "." + String(AUTH.user.username).toLowerCase() : ".locked");
-const LS_LEGACY = "invoiceMaker.v3";
 const now = new Date();
 const prev = new Date(now.getFullYear(), now.getMonth()-1, 1);
 const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0);
@@ -624,7 +625,7 @@ const DEFAULTS = {
   mode:"easy", lang:"de",
   sName:"Ahsan Muhammad", sJob:"Güterbeförderung mit Kraftfahrzeugen",
   sStreet:"Fabrikstraße 14/2", sCity:"4600 Wels",
-  sGisa:"38298813", sRider:"", sVat:"0",
+  sGisa:"38298813", sPhone:"", sRider:"", sVat:"0",
   rName:"Arli\u00B4s Road House KG",
   rAddr:"Pfarrhofsberg 36\n4714 Meggenhofen\nATU76892604",
   iNo:`${prev.getFullYear()}${String(prev.getMonth()+1).padStart(3,"0")}`,
@@ -639,13 +640,6 @@ const DEFAULTS = {
   ]
 };
 if(AUTH.user && AUTH.user.defaults) Object.assign(DEFAULTS, AUTH.user.defaults);
-// one-time adoption of data saved before logins existed
-try{
-  if(AUTH.user && localStorage.getItem(LS)===null && localStorage.getItem(LS_LEGACY)!==null){
-    localStorage.setItem(LS, localStorage.getItem(LS_LEGACY));
-    localStorage.removeItem(LS_LEGACY);
-  }
-}catch(e){}
 let S = load();
 function load(){
   try{
@@ -700,7 +694,7 @@ const EN_MAP = {
   "Bankverbindung":"Bank details","Bankverbindung (wird gespeichert)":"Bank details (saved)",
   "Rechnungsdaten":"Invoice details",
   "Name":"Name","Tätigkeit":"Business activity","Straße, Nr.":"Street, no.",
-  "PLZ, Ort":"Postcode, city","GISA-Zahl":"GISA number","Rider-ID":"Rider ID",
+  "PLZ, Ort":"Postcode, city","GISA-Zahl":"GISA number","Rider-ID":"Rider ID","Telefon":"Phone",
   "USt / Kleinunternehmer":"VAT % (0 = exempt)","USt %":"VAT %",
   "Firma / Name":"Company / name","Adresse (Straße, PLZ, Ort)":"Address (street, postcode, city)",
   "Rechnungsnummer":"Invoice number","Rechnungsdatum":"Invoice date",
@@ -1076,7 +1070,7 @@ function loadPdfJs(){
 }
 
 function applyImport(d){
-  const keys=["sName","sJob","sStreet","sCity","sGisa","sRider","sVat",
+  const keys=["sName","sJob","sStreet","sCity","sGisa","sPhone","sRider","sVat",
               "rName","rAddr","iNo","iDate","iFrom","iTo","iDesc",
               "bOwner","bIban","bBic","bRef"];
   keys.forEach(k=>{ if(d[k]!=null && d[k]!=="") S[k]=String(d[k]); });
@@ -1165,7 +1159,7 @@ function makePdf(){
   /* header */
   doc.setFont("helvetica","bold").setFontSize(22).setTextColor(...NAVY).text("RECHNUNG",L,y+6);
   doc.setFont("helvetica","normal").setFontSize(9).setTextColor(40);
-  doc.text([S.sName,S.sJob,S.sStreet,S.sCity,"GISA-Zahl: "+S.sGisa].filter(Boolean),R,y,{align:"right"});
+  doc.text([S.sName,S.sJob,S.sStreet,S.sCity,(S.sPhone||"").trim()?"Tel.: "+S.sPhone.trim():"","GISA-Zahl: "+S.sGisa].filter(Boolean),R,y,{align:"right"});
   y+=26; doc.setDrawColor(...NAVY).setLineWidth(.8).line(L,y,R,y); y+=8;
 
   /* recipient + invoice meta */
@@ -1239,7 +1233,7 @@ function makePdf(){
 }
 
 function exportState(){
-  const keys=["sName","sJob","sStreet","sCity","sGisa","sRider","sVat",
+  const keys=["sName","sJob","sStreet","sCity","sGisa","sPhone","sRider","sVat",
               "rName","rAddr","iNo","iDate","iFrom","iTo","iDesc",
               "bOwner","bIban","bBic","bRef"];
   const d={items:S.items.map(it=>({d:it.d,q:it.q,p:it.p}))};

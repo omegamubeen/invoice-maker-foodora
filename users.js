@@ -3,18 +3,27 @@
    Passwörter stehen NICHT im Klartext hier, sondern als SHA-256-Hash von
        foodora-invoice:<benutzername>:<passwort>
    (Benutzername kleingeschrieben). Hash erzeugen, z. B. im Terminal:
-       printf '%s' 'foodora-invoice:mubeen:MeinPasswort' | sha256sum
-   Optional: "defaults" überschreibt die Vorausfüllung (Absender, Bank …) für diesen Benutzer.
+       printf '%s' 'foodora-invoice:mubeen@foodora.com:MeinPasswort' | sha256sum
 
    ACHTUNG: Das ist nur eine Zugangssperre im Browser (die Seite ist statisch auf GitHub Pages).
    Wer den Quelltext liest, sieht die Hashes — nutze lange Passwörter und gib hier nichts Geheimes hinein.
 */
+
+/* Leere Vorausfüllung: jeder Benutzer trägt seine Daten (Name, Adresse, Telefon, Bank, Firma …)
+   beim ersten Login selbst ein; sie werden nur in seinem Browser-Profil gespeichert. */
+const BLANK_DEFAULTS = {
+  sName:"", sStreet:"", sCity:"", sGisa:"", sPhone:"", sRider:"",
+  rName:"", rAddr:"",
+  bOwner:"", bIban:"", bBic:"", bRef:"",
+  items:[
+    {d:"Zustellungen / Base Order Pay", q:"0", p:"0,00"},
+    {d:"Shifts Done Bonus", q:"0", p:"0,00"},
+    {d:"KT20 Bonus", q:"0", p:"0,00"},
+    {d:"Kunden-Trinkgeld (App Tips)", q:"", p:"0,00"}
+  ]
+};
+
 window.USERS = [
-  {
-    username: "demo",
-    name: "Demo",
-    // Passwort: demo1234  → bitte ersetzen!
-    hash: "051f74d57f23453c5d90fa7abeca0043e74869db0ce3d46d1025a84c893f6081"
-    // defaults: { sName: "Max Mustermann", bIban: "AT00 0000 0000 0000 0000" }
-  }
+  { username:"mubeen@foodora.com", name:"Mubeen", hash:"fffd4574df59192163ee4b14dc960ae2cf438d2997ab92a464648858aa15a276", defaults:BLANK_DEFAULTS },
+  { username:"hamza@foodora.com",  name:"Hamza",  hash:"c6c0acbda98c6325933e0f9345e186fd4ea56251b8c12c3648c1df86e8b5afd9", defaults:BLANK_DEFAULTS }
 ];

@@ -47,7 +47,7 @@ Die Benutzer werden von Hand in `users.js` eingetragen (Benutzername, Anzeigenam
 printf '%s' 'foodora-invoice:<benutzername>:<passwort>' | sha256sum
 ```
 
-Pro Benutzer werden die Rechnungsdaten getrennt im Browser gespeichert; optional kann `defaults` in `users.js` die Vorausfüllung (Absender, Bank …) pro Benutzer ändern. Beispielzugang: `demo` / `demo1234` — **vor dem Livegang ersetzen**.
+Pro Benutzer werden die Rechnungsdaten getrennt im Browser gespeichert; `defaults` in `users.js` die Vorausfüllung (Absender, Bank …) pro Benutzer ändern. Neue Benutzer starten mit leeren Feldern (`BLANK_DEFAULTS`) und tragen ihre Daten beim ersten Login selbst ein.
 
 > Hinweis: Die App ist eine statische Seite (GitHub Pages) ohne Server. Das Login ist eine Zugangssperre im Browser, kein echter Schutz — die Hashes sind im Quelltext sichtbar. Daher lange Passwörter verwenden.
 
