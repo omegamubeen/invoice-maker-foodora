@@ -62,7 +62,8 @@
   }
   .hello .hi{font-size:.78rem;color:var(--muted);font-weight:600}
   .hello .who{font-size:1.02rem;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .top-actions{display:flex;gap:8px}
+  .top-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+  @media(max-width:520px){.top .wrap{flex-wrap:wrap}.hello{flex:1 1 100%}.top-actions{flex:1 1 100%;justify-content:flex-start}}
   .chip-btn{
     border:none;background:var(--surface);color:var(--ink);
     border-radius:99px;padding:10px 14px;font-size:.76rem;font-weight:700;
@@ -294,6 +295,17 @@
     text-align:center;font-size:.68rem;font-weight:600;color:var(--faint);line-height:1.8;
   }
 
+  /* ---------- coming-soon banner ---------- */
+  .soon{
+    display:flex;align-items:center;gap:10px;margin:12px 0 0;padding:11px 14px;
+    background:var(--surface);border-radius:16px;box-shadow:var(--shadow-tile);
+    border:1px solid var(--edge);font-size:.82rem;font-weight:600;color:var(--ink);
+  }
+  .soon-tag{
+    flex:none;background:var(--grad);color:#fff;border-radius:99px;padding:3px 10px;
+    font-size:.68rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+  }
+
   /* ---------- settings sheet (drawer) ---------- */
   .backdrop{
     position:fixed;inset:0;background:rgba(25,16,70,.4);z-index:70;
@@ -391,6 +403,14 @@
       <button class="chip-btn" id="logoutBtn" type="button" title="Abmelden">⎋</button>
       <input type="file" id="importFile" accept="application/pdf" hidden>
     </div>
+  </div>
+</div>
+
+<!-- ================= coming-soon banner ================= -->
+<div class="wrap">
+  <div class="soon" role="note">
+    <span class="soon-tag">Bald</span>
+    <span class="soon-txt">Neu in Kürze: Automatisches Ausfüllen — Rechnungen füllen sich von selbst aus.</span>
   </div>
 </div>
 
@@ -684,7 +704,7 @@ const deDate = s => { if(!s) return ""; const [y,m,d]=s.split("-"); return `${d}
 
 /* ================= language (DE / EN) ================= */
 const EN_MAP = {
-  "✎ Daten":"✎ Edit","Hallo,":"Hi,",
+  "✎ Daten":"✎ Edit","Bald":"Soon","Neu in Kürze: Automatisches Ausfüllen — Rechnungen füllen sich von selbst aus.":"Coming soon: auto-fill — your invoices will fill themselves in.","Hallo,":"Hi,",
   "Einfach":"Easy","Profi":"Pro",
   "Gesamtbetrag":"Total due","Positionen":"Line items",
   "PDF erstellen":"Create PDF",
@@ -731,7 +751,7 @@ const i18nNodes = [];
 document.querySelectorAll(
   "label, section>h2, .easyhint, .hint, .hero-label, .sec-title h3, .dhead h3, " +
   "#makePdf span, #addItem, #openDrawer, #importBtn, #newInvoiceBtn, #mEasy, #mPro, .totals div span:first-child, " +
-  ".hello .hi, .foot .priv"
+  ".hello .hi, .foot .priv, .soon-tag, .soon-txt"
 ).forEach(el=>{
   const n = el.firstChild;
   if(n && n.nodeType===3 && n.nodeValue.trim())
