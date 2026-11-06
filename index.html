@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<script src="users.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
@@ -321,10 +322,53 @@
   }
   .drawer section{margin:12px 0}
 
+  /* ---- login ---- */
+  #login{display:none}
+  body.locked > *:not(#login):not(script){display:none!important}
+  body.locked #login{
+    display:grid;place-items:center;min-height:100vh;padding:24px 16px;
+    background:var(--bg);
+  }
+  .login-card{
+    width:100%;max-width:380px;background:var(--surface);border-radius:24px;
+    padding:28px 22px;box-shadow:var(--shadow-float);text-align:center;
+  }
+  .login-card .avatar{margin:0 auto 14px;width:56px;height:56px;font-size:1.3rem}
+  .login-card h1{font-size:1.25rem;letter-spacing:-.02em;margin:0 0 4px;color:var(--ink)}
+  .login-card p{margin:0 0 18px;color:var(--muted);font-size:.85rem}
+  .login-card label{display:block;text-align:left;font-size:.75rem;font-weight:700;color:var(--muted);margin:12px 0 5px}
+  .login-card input{
+    width:100%;box-sizing:border-box;border:1.5px solid var(--edge);border-radius:14px;
+    padding:13px 14px;font:inherit;font-size:1rem;color:var(--ink);background:var(--bg);
+  }
+  .login-card input:focus{outline:none;border-color:var(--brand)}
+  .login-card button[type=submit]{
+    width:100%;margin-top:18px;border:none;border-radius:14px;padding:14px;
+    background:var(--grad);color:#fff;font:inherit;font-weight:800;font-size:1rem;cursor:pointer;
+  }
+  .login-card button[disabled]{opacity:.6;cursor:wait}
+  #loginErr{min-height:1.2em;margin-top:12px;color:#d92d20;font-size:.82rem;font-weight:600}
+
   @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
-<body class="easy">
+<body class="easy locked">
+
+<!-- ================= login ================= -->
+<div id="login">
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <div class="avatar" aria-hidden="true">F</div>
+    <h1 id="loginTitle">Anmelden</h1>
+    <p id="loginSub">Bitte melde dich an, um Rechnungen zu erstellen.</p>
+    <label for="loginUser" id="loginUserLbl">Benutzername</label>
+    <input id="loginUser" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+    <label for="loginPass" id="loginPassLbl">Passwort</label>
+    <input id="loginPass" name="password" type="password" autocomplete="current-password" required>
+    <button type="submit" id="loginBtn">Anmelden</button>
+    <div id="loginErr" role="alert"></div>
+  </form>
+</div>
+
 
 <!-- ================= top bar ================= -->
 <div class="top">
@@ -344,6 +388,7 @@
       <button class="chip-btn" id="importBtn" type="button" aria-label="Rechnung importieren">⬆ Import</button>
       <button class="chip-btn" id="newInvoiceBtn" type="button" title="Neue Rechnung beginnen">＋ Neu</button>
       <button class="chip-btn" id="openDrawer" type="button" aria-label="Daten bearbeiten">✎ Daten</button>
+      <button class="chip-btn" id="logoutBtn" type="button" title="Abmelden">⎋</button>
       <input type="file" id="importFile" accept="application/pdf" hidden>
     </div>
   </div>
@@ -512,8 +557,63 @@
 
 <script>
 "use strict";
+/* ================= auth (client-side gate, users in users.js) ================= */
+const AUTH = (()=>{
+  const KEY = "invoiceMaker.session";
+  const users = Array.isArray(window.USERS) ? window.USERS : [];
+  const find = n => users.find(u => String(u.username).toLowerCase() === String(n||"").trim().toLowerCase());
+  const sha256 = async txt => {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(txt));
+    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+  };
+  let user = null;
+  try{ user = find(localStorage.getItem(KEY)) || null; }catch(e){}   // removed users are logged out automatically
+  const de = (navigator.language||"").toLowerCase().startsWith("de");
+  const L = de ? {
+    title:"Anmelden", sub:"Bitte melde dich an, um Rechnungen zu erstellen.", user:"Benutzername", pass:"Passwort",
+    btn:"Anmelden", bad:"Benutzername oder Passwort falsch.", nocrypto:"Anmeldung benötigt eine sichere Verbindung (https)."
+  } : {
+    title:"Sign in", sub:"Please sign in to create invoices.", user:"Username", pass:"Password",
+    btn:"Sign in", bad:"Wrong username or password.", nocrypto:"Sign-in needs a secure connection (https)."
+  };
+  if(!user){
+    const $ = id => document.getElementById(id);
+    $("loginTitle").textContent=L.title; $("loginSub").textContent=L.sub;
+    $("loginUserLbl").textContent=L.user; $("loginPassLbl").textContent=L.pass; $("loginBtn").textContent=L.btn;
+    let fails = 0;
+    $("loginForm").addEventListener("submit", async e=>{
+      e.preventDefault();
+      const err=$("loginErr"), btn=$("loginBtn"); err.textContent=""; btn.disabled=true;
+      try{
+        if(!(window.crypto && crypto.subtle)){ err.textContent=L.nocrypto; return; }
+        const name=$("loginUser").value.trim().toLowerCase(), u=find(name);
+        const h=await sha256("foodora-invoice:"+name+":"+$("loginPass").value);
+        if(u && h===String(u.hash).toLowerCase()){
+          try{ localStorage.setItem(KEY,u.username); }catch(_){}
+          location.reload();
+          return;
+        }
+        fails++;
+        await new Promise(r=>setTimeout(r, Math.min(fails,5)*600));   // slow down guessing
+        err.textContent=L.bad; $("loginPass").value=""; $("loginPass").focus();
+      } finally { btn.disabled=false; }
+    });
+    setTimeout(()=>$("loginUser").focus(),0);
+  } else {
+    document.body.classList.remove("locked");
+  }
+  return {
+    user, KEY,
+    logout(){ try{ localStorage.removeItem(KEY); }catch(e){} location.reload(); }
+  };
+})();
+</script>
+
+<script>
+"use strict";
 /* ================= state ================= */
-const LS = "invoiceMaker.v3";
+const LS = "invoiceMaker.v3" + (AUTH.user ? "." + String(AUTH.user.username).toLowerCase() : ".locked");
+const LS_LEGACY = "invoiceMaker.v3";
 const now = new Date();
 const prev = new Date(now.getFullYear(), now.getMonth()-1, 1);
 const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0);
@@ -538,6 +638,14 @@ const DEFAULTS = {
     {d:"Kunden-Trinkgeld (App Tips)", q:"", p:"119,50"}
   ]
 };
+if(AUTH.user && AUTH.user.defaults) Object.assign(DEFAULTS, AUTH.user.defaults);
+// one-time adoption of data saved before logins existed
+try{
+  if(AUTH.user && localStorage.getItem(LS)===null && localStorage.getItem(LS_LEGACY)!==null){
+    localStorage.setItem(LS, localStorage.getItem(LS_LEGACY));
+    localStorage.removeItem(LS_LEGACY);
+  }
+}catch(e){}
 let S = load();
 function load(){
   try{
@@ -558,6 +666,7 @@ function load(){
 }
 let saveTimer;
 function save(quiet){
+  if(!AUTH.user) return;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{
     try{
@@ -649,7 +758,7 @@ document.getElementById("langEn").addEventListener("click",()=>{ S.lang="en"; ap
 
 /* ================= greeting ================= */
 function greet(){
-  const first=(S.sName||"").trim().split(/\s+/)[0]||"—";
+  const first=((AUTH.user&&AUTH.user.name)||S.sName||"").trim().split(/\s+/)[0]||"—";
   document.getElementById("whoName").textContent = first + " 👋";
   document.getElementById("avatar").textContent = (first[0]||"F").toUpperCase();
 }
@@ -836,6 +945,7 @@ function startNewInvoice(){
   showToast(S.lang==="en"?"✓ New invoice started":"✓ Neue Rechnung vorbereitet");
 }
 document.getElementById("newInvoiceBtn").addEventListener("click",startNewInvoice);
+document.getElementById("logoutBtn").addEventListener("click",()=>AUTH.logout());
 
 function pickEmoji(name,flat){
   const n=(name||"").toLowerCase();
