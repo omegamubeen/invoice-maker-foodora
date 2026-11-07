@@ -455,7 +455,7 @@
     </button>
     <button type="button" class="im-opt" id="imAuto">
       <span class="im-ico" aria-hidden="true">🛵</span>
-      <span class="im-body"><span class="im-t">Bestellungen automatisch ausfüllen</span><span class="im-s">Foodora-Abrechnung (PDF) hochladen — Zeitraum, Rider-ID und Positionen werden ausgefüllt</span></span>
+      <span class="im-body"><span class="im-t">Bestellungen automatisch ausfüllen</span><span class="im-s">Foodora-Abrechnung (PDF) hochladen — Zeitraum und Positionen werden ausgefüllt</span></span>
     </button>
     <button type="button" class="im-cancel" id="imCancel">Abbrechen</button>
   </div>
@@ -478,7 +478,6 @@
       <div><label>PLZ, Ort</label><input data-k="sCity"></div>
       <div><label>Telefon</label><input data-k="sPhone" type="tel"></div>
       <div><label>GISA-Zahl</label><input data-k="sGisa"></div>
-      <div><label>Rider-ID</label><input data-k="sRider"></div>
       <div><label>USt %</label><input data-k="sVat" class="num" inputmode="decimal"></div>
     </div>
   </section>
@@ -565,7 +564,6 @@
       <div><label>PLZ, Ort</label><input id="sCity" data-k="sCity"></div>
       <div><label>Telefon</label><input id="sPhone" data-k="sPhone" type="tel"></div>
       <div><label>GISA-Zahl</label><input id="sGisa" data-k="sGisa"></div>
-      <div><label>Rider-ID</label><input id="sRider" data-k="sRider"></div>
       <div><label>USt / Kleinunternehmer</label><input id="sVat" data-k="sVat" placeholder="0" class="num" inputmode="decimal"></div>
     </div>
   </section>
@@ -701,7 +699,7 @@ const DEFAULTS = {
   mode:"easy", lang:"de",
   sName:"Ahsan Muhammad", sJob:"Güterbeförderung mit Kraftfahrzeugen",
   sStreet:"Fabrikstraße 14/2", sCity:"4600 Wels",
-  sGisa:"38298813", sPhone:"", sRider:"", sVat:"0", basePay:"5,70",
+  sGisa:"38298813", sPhone:"", sVat:"0", basePay:"5,70",
   rName:"Arli\u00B4s Road House KG",
   rAddr:"Pfarrhofsberg 36\n4714 Meggenhofen\nATU76892604",
   iNo:`${prev.getFullYear()}${String(prev.getMonth()+1).padStart(3,"0")}`,
@@ -763,7 +761,7 @@ const EN_MAP = {
   "✎ Daten":"✎ Edit","Rechnung importieren":"Import invoice","Base Pay":"Base pay","Base Pay pro Bestellung (€)":"Base pay per order (€)","Wird als Preis der Base-Order-Position eingesetzt — auch beim automatischen Ausfüllen der Bestellungen.":"Used as the price of the base-order line — also when autofilling orders.","Alte Rechnung":"Old invoice",
   "Eine früher erstellte FAKTURA-PDF hochladen — alle Felder werden ausgefüllt":"Upload a previously created FAKTURA PDF — every field gets filled in",
   "Bestellungen automatisch ausfüllen":"Autofill orders",
-  "Foodora-Abrechnung (PDF) hochladen — Zeitraum, Rider-ID und Positionen werden ausgefüllt":"Upload your Foodora statement (PDF) — period, rider ID and line items are filled in",
+  "Foodora-Abrechnung (PDF) hochladen — Zeitraum und Positionen werden ausgefüllt":"Upload your Foodora statement (PDF) — period and line items are filled in",
   "Abbrechen":"Cancel","Hallo,":"Hi,",
   "Einfach":"Easy","Profi":"Pro",
   "Gesamtbetrag":"Total due","Positionen":"Line items",
@@ -774,7 +772,7 @@ const EN_MAP = {
   "Bankverbindung":"Bank details","Bankverbindung (wird gespeichert)":"Bank details (saved)",
   "Rechnungsdaten":"Invoice details",
   "Name":"Name","Tätigkeit":"Business activity","Straße, Nr.":"Street, no.",
-  "PLZ, Ort":"Postcode, city","GISA-Zahl":"GISA number","Rider-ID":"Rider ID","Telefon":"Phone",
+  "PLZ, Ort":"Postcode, city","GISA-Zahl":"GISA number","Telefon":"Phone",
   "USt / Kleinunternehmer":"VAT % (0 = exempt)","USt %":"VAT %",
   "Firma / Name":"Company / name","Adresse (Straße, PLZ, Ort)":"Address (street, postcode, city)",
   "Rechnungsnummer":"Invoice number","Rechnungsdatum":"Invoice date",
@@ -1163,7 +1161,7 @@ function loadPdfJs(){
   return pdfjsReady;
 }
 
-const IMPORT_KEYS=["sName","sJob","sStreet","sCity","sGisa","sPhone","sRider","sVat",
+const IMPORT_KEYS=["sName","sJob","sStreet","sCity","sGisa","sPhone","sVat",
                    "rName","rAddr","iNo","iDate","iFrom","iTo","iDesc",
                    "bOwner","bIban","bBic","bRef"];
 /* replace=true: the PDF carried the full data set, so empty values overwrite too */
@@ -1246,7 +1244,6 @@ function parseInvoiceLines(L){
         if(/^Rechnungsnummer/.test(k)) d.iNo=v;
         else if(/^Rechnungsdatum/.test(k)) d.iDate=de2iso(v);
         else if(/^Leistungszeitraum/.test(k)){ const m=v.match(/(\d{2}\.\d{2}\.\d{4})\s*[–\-]\s*(\d{2}\.\d{2}\.\d{4})/); if(m){d.iFrom=de2iso(m[1]);d.iTo=de2iso(m[2]);} }
-        else if(/^Rider-ID/.test(k)) d.sRider=v;
       }
     }
     if(rec.length){ d.rName=rec[0]; d.rAddr=rec.slice(1).join("\n"); }
@@ -1286,8 +1283,8 @@ function parseInvoiceLines(L){
   }
   /* a reference identical to the automatic one is stored as "auto" (empty) */
   if(d.bRef){
-    const auto=((d.sRider||"").trim()?"Rider-ID "+d.sRider+" / ":"")+"Rechnung "+(d.iNo||"");
-    if(d.bRef===auto) d.bRef="";
+    d.bRef=d.bRef.replace(/^Rider-ID\s+\S+\s*\/\s*/,"");              // older PDFs prefixed the reference with the rider ID
+    if(d.bRef==="Rechnung "+(d.iNo||"")) d.bRef="";
   }
   Object.keys(d).forEach(k=>{ if(d[k]==null) delete d[k]; });
   return d;
@@ -1360,7 +1357,6 @@ function parseFoodoraLines(L){
   const per=flat.match(/ZEITRAUM\s+(\d{2}\.\d{2}\.\d{4})\s*[–\-]\s*(\d{2}\.\d{2}\.\d{4})/) || flat.match(/(\d{2}\.\d{2}\.\d{4})\s*[–\-]\s*(\d{2}\.\d{2}\.\d{4})/);
   if(per){ d.iFrom=de2iso(per[1]); d.iTo=de2iso(per[2]); }
   const after=(label)=>{ for(const l of L){ const i=l.items.findIndex(x=>x.s===label); if(i>=0 && l.items[i+1]) return l.items[i+1].s; } return ""; };
-  d.sRider=after("RIDER-ID").replace(/\s/g,"");
   d.riderName=after("RIDER");
 
   /* compensation table (right half of the page) */
@@ -1391,7 +1387,6 @@ function applyAutofill(d){
   const lastDay=new Date(fy,fm,0).getDate();
   if(fd===1 && fy===ty && fm===tm && td===lastDay) setMonth(fy,fm-1);
   else{ S.iFrom=d.iFrom; S.iTo=d.iTo; S.iDescAuto=true; syncServiceDescription(); syncInvoiceNumberToPeriod(); }
-  if(d.sRider) S.sRider=d.sRider;
   S.items=d.items.map(it=>({d:it.d,q:it.q,p:it.p}));
   const own=String(S.basePay||"").trim();
   if(own) S.items.forEach(it=>{ if(isBaseOrder(it)) it.p=fmtDe(toNum(own)); });   // your own base pay wins over the statement's rate
@@ -1437,7 +1432,7 @@ function makePdf(){
     ["sName","Absender: Name","Sender: name"],["sJob","Absender: Tätigkeit","Sender: business activity"],
     ["sStreet","Absender: Straße, Nr.","Sender: street"],["sCity","Absender: PLZ, Ort","Sender: postcode, city"],
     ["sGisa","Absender: GISA-Zahl","Sender: GISA number"],
-    ["sRider","Absender: Rider-ID","Sender: rider ID"],["sVat","USt %","VAT %"],
+    ["sVat","USt %","VAT %"],
     ["rName","Empfänger: Firma / Name","Recipient: company / name"],["rAddr","Empfänger: Adresse","Recipient: address"],
     ["iNo","Rechnungsnummer","Invoice number"],["iDate","Rechnungsdatum","Invoice date"],
     ["iFrom","Leistungszeitraum von","Service period from"],["iTo","Leistungszeitraum bis","Service period to"],
@@ -1477,7 +1472,6 @@ function makePdf(){
   doc.text(rec,L,y+5);
   const meta=[["Rechnungsnummer:",S.iNo],["Rechnungsdatum:",deDate(S.iDate)],
               ["Leistungszeitraum:",deDate(S.iFrom)+" – "+deDate(S.iTo)]];
-  if((S.sRider||"").trim()) meta.push(["Rider-ID:",S.sRider]);
   let my=y;
   meta.forEach(([k,v])=>{ doc.setFont("helvetica","bold").setFontSize(9).text(k,118,my);
     doc.setFont("helvetica","normal").text(String(v||""),152,my); my+=5.5; });
@@ -1518,7 +1512,7 @@ function makePdf(){
   /* bank details */
   doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(...NAVY).text("BANKVERBINDUNG",L,y); y+=4.5;
   doc.setFontSize(9).setTextColor(20);
-  const ref = S.bRef || (((S.sRider||"").trim()? "Rider-ID "+S.sRider+" / " : "") + "Rechnung " + S.iNo);
+  const ref = S.bRef || ("Rechnung " + S.iNo);
   [["Kontoinhaber:",S.bOwner],["IBAN:",S.bIban],["BIC:",S.bBic],["Verwendungszweck:",ref]].forEach(([k,v])=>{
     doc.setFont("helvetica","bold").text(k,L,y); doc.setFont("helvetica","normal").text(String(v||""),58,y); y+=5.2;
   });
@@ -1541,7 +1535,7 @@ function makePdf(){
 }
 
 function exportState(){
-  const keys=["sName","sJob","sStreet","sCity","sGisa","sPhone","sRider","sVat",
+  const keys=["sName","sJob","sStreet","sCity","sGisa","sPhone","sVat",
               "rName","rAddr","iNo","iDate","iFrom","iTo","iDesc",
               "bOwner","bIban","bBic","bRef"];
   const d={items:S.items.map(it=>({d:it.d,q:it.q,p:it.p}))};

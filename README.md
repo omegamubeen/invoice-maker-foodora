@@ -42,7 +42,7 @@ git push -u origin main
 ## Import
 Der **⬆ Import**-Button bietet zwei Wege:
 - **Alte Rechnung** — eine früher erstellte FAKTURA-PDF hochladen; alle Felder (Absender, Empfänger, Bank, Positionen …) werden ausgefüllt.
-- **Bestellungen automatisch ausfüllen** — die Foodora-Abrechnung („Abrechnungsvorbereitung“) hochladen; Zeitraum (inkl. Rechnungsnummer & Beschreibung), Rider-ID und die Positionen (Bestellungen, Boni, Trinkgeld) werden ausgefüllt. Positionen mit 0 € werden weggelassen.
+- **Bestellungen automatisch ausfüllen** — die Foodora-Abrechnung („Abrechnungsvorbereitung“) hochladen; Zeitraum (inkl. Rechnungsnummer & Beschreibung) und die Positionen (Bestellungen, Boni, Trinkgeld) werden ausgefüllt. Positionen mit 0 € werden weggelassen.
 
 Alle Felder, die auf der PDF erscheinen, sind Pflicht (nur der Verwendungszweck wird bei Leerlassen automatisch erzeugt) — sonst wird kein PDF erstellt.
 

@@ -12,7 +12,7 @@
 /* Leere Vorausfüllung: jeder Benutzer trägt seine Daten (Name, Adresse, Telefon, Bank, Firma …)
    beim ersten Login selbst ein; sie werden nur in seinem Browser-Profil gespeichert. */
 const BLANK_DEFAULTS = {
-  sName:"", sStreet:"", sCity:"", sGisa:"", sPhone:"", sRider:"",
+  sName:"", sStreet:"", sCity:"", sGisa:"", sPhone:"",
   rName:"", rAddr:"",
   bOwner:"", bIban:"", bBic:"", bRef:"",
   items:[
