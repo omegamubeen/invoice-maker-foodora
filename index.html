@@ -337,19 +337,10 @@
   .im-body{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
   .im-t{font-weight:800;font-size:.95rem}
   .im-s{font-size:.76rem;color:var(--muted);font-weight:600;line-height:1.35}
-  .im-tag{align-self:flex-start}
-  .im-cancel{border:none;background:transparent;color:var(--muted);font:inherit;font-weight:700;padding:10px;cursor:pointer}
+    .im-cancel{border:none;background:transparent;color:var(--muted);font:inherit;font-weight:700;padding:10px;cursor:pointer}
 
-  /* ---------- coming-soon banner ---------- */
-  .soon{
-    display:flex;align-items:center;gap:10px;margin:12px 0 0;padding:11px 14px;
-    background:var(--surface);border-radius:16px;box-shadow:var(--shadow-tile);
-    border:1px solid var(--edge);font-size:.82rem;font-weight:600;color:var(--ink);
-  }
-  .soon-tag{
-    flex:none;background:var(--grad);color:#fff;border-radius:99px;padding:3px 10px;
-    font-size:.68rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
-  }
+  .im-tag{flex:none;align-self:flex-start;background:var(--grad);color:#fff;border-radius:99px;padding:3px 10px;font-size:.68rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+  input.invalid,textarea.invalid{border-color:#d92d20!important;background:#fff5f4!important}
 
   /* ---------- settings sheet (drawer) ---------- */
   .backdrop{
@@ -447,6 +438,7 @@
       <button class="chip-btn" id="openDrawer" type="button" aria-label="Daten bearbeiten">✎ Daten</button>
       <button class="chip-btn" id="logoutBtn" type="button" title="Abmelden" aria-label="Abmelden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></button>
       <input type="file" id="importFile" accept="application/pdf" hidden>
+      <input type="file" id="autofillFile" accept="application/pdf" hidden>
     </div>
   </div>
 </div>
@@ -459,20 +451,11 @@
       <span class="im-ico" aria-hidden="true">📄</span>
       <span class="im-body"><span class="im-t">Alte Rechnung</span><span class="im-s">Eine früher erstellte FAKTURA-PDF hochladen — alle Felder werden ausgefüllt</span></span>
     </button>
-    <button type="button" class="im-opt im-off" id="imFoodora" aria-disabled="true">
+    <button type="button" class="im-opt" id="imAuto">
       <span class="im-ico" aria-hidden="true">🛵</span>
-      <span class="im-body"><span class="im-t">Foodora-Rechnung</span><span class="im-s">Automatisches Ausfüllen aus Foodora-Abrechnungen</span></span>
-      <span class="soon-tag im-tag">Bald</span>
+      <span class="im-body"><span class="im-t">Bestellungen automatisch ausfüllen</span><span class="im-s">Foodora-Abrechnung (PDF) hochladen — Zeitraum, Rider-ID und Positionen werden ausgefüllt</span></span>
     </button>
     <button type="button" class="im-cancel" id="imCancel">Abbrechen</button>
-  </div>
-</div>
-
-<!-- ================= coming-soon banner ================= -->
-<div class="wrap">
-  <div class="soon" role="note">
-    <span class="soon-tag">Bald</span>
-    <span class="soon-txt">Neu in Kürze: Automatisches Ausfüllen — Rechnungen füllen sich von selbst aus.</span>
   </div>
 </div>
 
@@ -766,10 +749,11 @@ const deDate = s => { if(!s) return ""; const [y,m,d]=s.split("-"); return `${d}
 
 /* ================= language (DE / EN) ================= */
 const EN_MAP = {
-  "✎ Daten":"✎ Edit","Bald":"Soon","Rechnung importieren":"Import invoice","Alte Rechnung":"Old invoice",
+  "✎ Daten":"✎ Edit","Rechnung importieren":"Import invoice","Alte Rechnung":"Old invoice",
   "Eine früher erstellte FAKTURA-PDF hochladen — alle Felder werden ausgefüllt":"Upload a previously created FAKTURA PDF — every field gets filled in",
-  "Foodora-Rechnung":"Foodora invoice","Automatisches Ausfüllen aus Foodora-Abrechnungen":"Auto-fill from Foodora statements","Abbrechen":"Cancel",
-  "Foodora-Import kommt bald":"Foodora import is coming soon","Neu in Kürze: Automatisches Ausfüllen — Rechnungen füllen sich von selbst aus.":"Coming soon: auto-fill — your invoices will fill themselves in.","Hallo,":"Hi,",
+  "Bestellungen automatisch ausfüllen":"Autofill orders",
+  "Foodora-Abrechnung (PDF) hochladen — Zeitraum, Rider-ID und Positionen werden ausgefüllt":"Upload your Foodora statement (PDF) — period, rider ID and line items are filled in",
+  "Abbrechen":"Cancel","Hallo,":"Hi,",
   "Einfach":"Easy","Profi":"Pro",
   "Gesamtbetrag":"Total due","Positionen":"Line items",
   "PDF erstellen":"Create PDF",
@@ -816,7 +800,7 @@ const i18nNodes = [];
 document.querySelectorAll(
   "label, section>h2, .easyhint, .hint, .hero-label, .sec-title h3, .dhead h3, " +
   "#makePdf span, #addItem, #openDrawer, #importBtn, #newInvoiceBtn, #mEasy, #mPro, .totals div span:first-child, " +
-  ".hello .hi, .foot .priv, .soon-tag, .soon-txt, .im-h, .im-t, .im-s, .im-cancel"
+  ".hello .hi, .foot .priv, .im-h, .im-t, .im-s, .im-cancel"
 ).forEach(el=>{
   const n = el.firstChild;
   if(n && n.nodeType===3 && n.nodeValue.trim())
@@ -1308,7 +1292,8 @@ document.getElementById("importBtn").addEventListener("click",()=>{ imModal.hidd
 document.getElementById("imCancel").addEventListener("click",closeImport);
 imModal.addEventListener("click",e=>{ if(e.target===imModal) closeImport(); });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape" && !imModal.hidden) closeImport(); });
-document.getElementById("imFoodora").addEventListener("click",()=>{ toastEl.classList.add("top"); showToast(t("Foodora-Import kommt bald")); setTimeout(()=>toastEl.classList.remove("top"),1800); });
+document.addEventListener("input",e=>{ if(e.target.classList) e.target.classList.remove("invalid"); });
+document.getElementById("imAuto").addEventListener("click",()=>{ closeImport(); document.getElementById("autofillFile").click(); });
 document.getElementById("imOld").addEventListener("click",()=>{ closeImport(); document.getElementById("importFile").click(); });
 
 document.getElementById("importFile").addEventListener("change",async e=>{
@@ -1340,24 +1325,111 @@ document.getElementById("importFile").addEventListener("change",async e=>{
   }
 });
 
+
+/* ================= Autofill orders from a Foodora statement ("Abrechnungsvorbereitung") ================= */
+const normName=v=>String(v||"").toLowerCase().replace(/[^a-zäöüß ]/g," ").split(/\s+/).filter(Boolean).sort().join(" ");
+function parseFoodoraLines(L){
+  const flat=L.map(l=>l.text).join("\n");
+  if(!/ABRECHNUNGSVORBEREITUNG/i.test(flat) || !/VERG[ÜU]TUNGS/i.test(flat)) return null;
+  const d={};
+  const per=flat.match(/ZEITRAUM\s+(\d{2}\.\d{2}\.\d{4})\s*[–\-]\s*(\d{2}\.\d{2}\.\d{4})/) || flat.match(/(\d{2}\.\d{2}\.\d{4})\s*[–\-]\s*(\d{2}\.\d{2}\.\d{4})/);
+  if(per){ d.iFrom=de2iso(per[1]); d.iTo=de2iso(per[2]); }
+  const after=(label)=>{ for(const l of L){ const i=l.items.findIndex(x=>x.s===label); if(i>=0 && l.items[i+1]) return l.items[i+1].s; } return ""; };
+  d.sRider=after("RIDER-ID").replace(/\s/g,"");
+  d.riderName=after("RIDER");
+
+  /* compensation table (right half of the page) */
+  let iV=-1, xV=0;
+  L.forEach((l,i)=>{ if(iV<0){ const it=l.items.find(x=>/^VERG[ÜU]TUNGS/i.test(x.s)); if(it){ iV=i; xV=it.x; } } });
+  if(iV<0) return null;
+  const items=[]; let total=null;
+  for(let i=iV+1;i<L.length;i++){
+    const txt=L[i].items.filter(x=>x.x>=xV-2).map(x=>x.s).join(" ").trim();
+    let m;
+    if((m=txt.match(/^GESAMTAUSZAHLUNG\s+([\d.]+,\d{2})\s*€/))){ total=m[1]; continue; }
+    if((m=txt.match(/^(.+?)\s+(\d+(?:,\d+)?)\s+([\d.]+,\d{2})\s*€\s+([\d.]+,\d{2})\s*€$/))){
+      const [,name,qty,rate,amount]=m;
+      if(toNum(amount)===0) continue;                       // zero lines (e.g. missed bonus) stay off the invoice
+      if(/^Completed Orders/i.test(name)) items.push({d:"Zustellungen / Base Order Pay (inkl. Weighted)",q:qty,p:rate});
+      else if(/Trinkgeld/i.test(name)) items.push(toNum(qty)===1 ? {d:"Kunden-Trinkgeld (App Tips)",q:"",p:amount} : {d:"Kunden-Trinkgeld (App Tips)",q:qty,p:rate});
+      else items.push({d:name.trim(),q:qty,p:rate});
+    }
+  }
+  if(!items.length) return null;
+  d.items=items; d.total=total;
+  return d;
+}
+
+function applyAutofill(d){
+  /* period: a full calendar month also refreshes invoice number + description */
+  const [fy,fm,fd]=d.iFrom.split("-").map(Number), [ty,tm,td]=d.iTo.split("-").map(Number);
+  const lastDay=new Date(fy,fm,0).getDate();
+  if(fd===1 && fy===ty && fm===tm && td===lastDay) setMonth(fy,fm-1);
+  else{ S.iFrom=d.iFrom; S.iTo=d.iTo; S.iDescAuto=true; syncServiceDescription(); syncInvoiceNumberToPeriod(); }
+  if(d.sRider) S.sRider=d.sRider;
+  S.items=d.items.map(it=>({d:it.d,q:it.q,p:it.p}));
+  document.querySelectorAll("[data-k]").forEach(el=>el.value=S[el.dataset.k]??"");
+  greet(); renderItems(); renderEasy(); drawMonth(); calc();
+  save(true);
+  try{ localStorage.setItem(LS, JSON.stringify(S)); }catch(e){}
+}
+
+document.getElementById("autofillFile").addEventListener("change",async e=>{
+  const f=e.target.files[0]; e.target.value="";
+  if(!f) return;
+  const en=S.lang==="en";
+  showToast(t("PDF wird gelesen …"));
+  try{
+    await loadPdfJs();
+    const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+    const d=parseFoodoraLines(await pdfLines(pdf));
+    if(!d || !d.iFrom){ showToast(en?"This is not a Foodora statement":"Das ist keine Foodora-Abrechnung"); return; }
+    if(S.sName.trim() && d.riderName && normName(S.sName)!==normName(d.riderName)){
+      const q=en?`This statement belongs to "${d.riderName}", but your sender is "${S.sName}".\n\nFill in the orders anyway?`
+                :`Diese Abrechnung gehört zu „${d.riderName}“, dein Absender ist aber „${S.sName}“.\n\nBestellungen trotzdem ausfüllen?`;
+      if(!confirm(q)) return;
+    }
+    applyAutofill(d);
+    const sum=S.items.reduce((a,it)=>a+lineTotal(it),0);
+    const mismatch=d.total && Math.abs(sum-toNum(d.total))>0.005;
+    showToast(mismatch ? (en?`⚠ Filled, but total differs from statement (${d.total} €)`:`⚠ Ausgefüllt, aber Summe weicht von der Abrechnung ab (${d.total} €)`)
+                       : (en?`✓ ${S.items.length} items filled · ${deDate(S.iFrom)} – ${deDate(S.iTo)}`:`✓ ${S.items.length} Positionen ausgefüllt · ${deDate(S.iFrom)} – ${deDate(S.iTo)}`));
+  }catch(err){
+    showToast(en?"Autofill failed — could not read the PDF":"Ausfüllen fehlgeschlagen — PDF konnte nicht gelesen werden");
+  }
+});
+
 /* ================= PDF ================= */
 function makePdf(){
   if(!window.jspdf){ alert(t("PDF-Bibliothek lädt noch — bitte kurz warten (Internet nötig beim ersten Mal).")); return; }
   const {net,vat,sum,rate} = calc();
-  const warnings=[];
-  if(!S.sName.trim()) warnings.push(S.lang==="en"?"Sender name is missing":"Absendername fehlt");
-  if(!S.rName.trim()) warnings.push(S.lang==="en"?"Recipient is missing":"Empfänger fehlt");
-  if(!S.iNo.trim()) warnings.push(S.lang==="en"?"Invoice number is missing":"Rechnungsnummer fehlt");
-  if(!S.iDate) warnings.push(S.lang==="en"?"Invoice date is missing":"Rechnungsdatum fehlt");
-  if(!S.iFrom||!S.iTo) warnings.push(S.lang==="en"?"Service period is incomplete":"Leistungszeitraum ist unvollständig");
-  else if(S.iFrom>S.iTo) warnings.push(S.lang==="en"?"Service period end is before its start":"Das Ende des Leistungszeitraums liegt vor dessen Beginn");
-  if(!S.iDesc.trim()) warnings.push(S.lang==="en"?"Service description is empty":"Leistungsbeschreibung ist leer");
-  if(!S.items.some(it=>it.d.trim()&&lineTotal(it)!==0)) warnings.push(S.lang==="en"?"No non-zero line item":"Keine Position mit einem Betrag ungleich null");
-  if(warnings.length){
-    const message=(S.lang==="en"?"Please review these invoice details:\n\n":"Bitte prüfe diese Rechnungsangaben:\n\n")+
-      warnings.map(w=>"• "+w).join("\n")+
-      (S.lang==="en"?"\n\nCreate the PDF anyway?":"\n\nPDF trotzdem erstellen?");
-    if(!confirm(message)) return;
+  const en=S.lang==="en";
+  /* every field that appears on the PDF is required (reference is generated automatically when empty) */
+  const REQUIRED=[
+    ["sName","Absender: Name","Sender: name"],["sJob","Absender: Tätigkeit","Sender: business activity"],
+    ["sStreet","Absender: Straße, Nr.","Sender: street"],["sCity","Absender: PLZ, Ort","Sender: postcode, city"],
+    ["sPhone","Absender: Telefon","Sender: phone"],["sGisa","Absender: GISA-Zahl","Sender: GISA number"],
+    ["sRider","Absender: Rider-ID","Sender: rider ID"],["sVat","USt %","VAT %"],
+    ["rName","Empfänger: Firma / Name","Recipient: company / name"],["rAddr","Empfänger: Adresse","Recipient: address"],
+    ["iNo","Rechnungsnummer","Invoice number"],["iDate","Rechnungsdatum","Invoice date"],
+    ["iFrom","Leistungszeitraum von","Service period from"],["iTo","Leistungszeitraum bis","Service period to"],
+    ["iDesc","Leistungsbeschreibung","Service description"],
+    ["bOwner","Bank: Kontoinhaber","Bank: account holder"],["bIban","Bank: IBAN","Bank: IBAN"],["bBic","Bank: BIC","Bank: BIC"]
+  ];
+  const missing=REQUIRED.filter(([k])=>!String(S[k]??"").trim());
+  const problems=missing.map(([,de,e])=>en?e+" is missing":de+" fehlt");
+  if(S.iFrom&&S.iTo&&S.iFrom>S.iTo) problems.push(en?"Service period end is before its start":"Das Ende des Leistungszeitraums liegt vor dessen Beginn");
+  if(S.items.some(it=>(it.d||it.p)&&!String(it.d).trim())) problems.push(en?"A line item has no description":"Eine Position hat keine Beschreibung");
+  if(!S.items.some(it=>it.d.trim()&&lineTotal(it)!==0)) problems.push(en?"No line item with an amount":"Keine Position mit einem Betrag");
+  document.querySelectorAll("input.invalid,textarea.invalid").forEach(el=>el.classList.remove("invalid"));
+  if(problems.length){
+    const els=[];
+    missing.forEach(([k])=>document.querySelectorAll(`[data-k="${k}"]`).forEach(el=>{ el.classList.add("invalid"); els.push(el); }));
+    alert((en?"The PDF cannot be created yet. Please fill in:\n\n":"Die PDF kann noch nicht erstellt werden. Bitte ausfüllen:\n\n")+problems.map(w=>"• "+w).join("\n"));
+    const inDrawer=els.some(el=>el.closest(".drawer"));
+    if(inDrawer && document.body.classList.contains("easy")) openDrawer(true);
+    else { const vis=els.find(el=>el.offsetParent); if(vis) vis.scrollIntoView({block:"center"}); }
+    return;
   }
   const NAVY=[26,60,94], LINE=[200,210,220], LIGHT=[238,242,246];
   const doc = new jspdf.jsPDF({unit:"mm",format:"a4"});
