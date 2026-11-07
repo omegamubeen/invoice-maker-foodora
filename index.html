@@ -304,12 +304,41 @@
     opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.top{bottom:auto;top:calc(20px + env(safe-area-inset-top));z-index:70}
 
   /* ---------- footer ---------- */
   .foot{
     max-width:640px;margin:30px auto 0;padding:0 18px;
     text-align:center;font-size:.68rem;font-weight:600;color:var(--faint);line-height:1.8;
   }
+
+  /* ---------- import chooser ---------- */
+  .im-back{
+    position:fixed;inset:0;z-index:60;background:rgba(25,16,70,.45);backdrop-filter:blur(3px);
+    display:flex;align-items:flex-end;justify-content:center;padding:16px;
+    padding-bottom:calc(16px + env(safe-area-inset-bottom));
+  }
+  .im-back[hidden]{display:none}
+  .im-sheet{
+    width:100%;max-width:440px;background:var(--surface);border-radius:24px;padding:20px 16px 14px;
+    box-shadow:var(--shadow-float);display:flex;flex-direction:column;gap:10px;
+  }
+  .im-h{font-size:1.05rem;letter-spacing:-.02em;color:var(--ink);padding:0 4px 4px}
+  .im-opt{
+    display:flex;align-items:center;gap:12px;text-align:left;width:100%;
+    border:1.5px solid var(--edge);background:var(--bg);border-radius:18px;padding:14px;
+    font:inherit;color:var(--ink);cursor:pointer;transition:border-color .15s,transform .12s;
+  }
+  .im-opt:hover{border-color:var(--brand)}
+  .im-opt:active{transform:scale(.985)}
+  .im-opt.im-off{opacity:.62;cursor:not-allowed}
+  .im-opt.im-off:hover{border-color:var(--edge)}
+  .im-ico{font-size:1.5rem;flex:none}
+  .im-body{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+  .im-t{font-weight:800;font-size:.95rem}
+  .im-s{font-size:.76rem;color:var(--muted);font-weight:600;line-height:1.35}
+  .im-tag{align-self:flex-start}
+  .im-cancel{border:none;background:transparent;color:var(--muted);font:inherit;font-weight:700;padding:10px;cursor:pointer}
 
   /* ---------- coming-soon banner ---------- */
   .soon{
@@ -419,6 +448,23 @@
       <button class="chip-btn" id="logoutBtn" type="button" title="Abmelden" aria-label="Abmelden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></button>
       <input type="file" id="importFile" accept="application/pdf" hidden>
     </div>
+  </div>
+</div>
+
+<!-- ================= import chooser ================= -->
+<div class="im-back" id="importModal" hidden>
+  <div class="im-sheet" role="dialog" aria-modal="true" aria-labelledby="imTitle">
+    <h3 id="imTitle" class="im-h">Rechnung importieren</h3>
+    <button type="button" class="im-opt" id="imOld">
+      <span class="im-ico" aria-hidden="true">📄</span>
+      <span class="im-body"><span class="im-t">Alte Rechnung</span><span class="im-s">Eine früher erstellte FAKTURA-PDF hochladen — alle Felder werden ausgefüllt</span></span>
+    </button>
+    <button type="button" class="im-opt im-off" id="imFoodora" aria-disabled="true">
+      <span class="im-ico" aria-hidden="true">🛵</span>
+      <span class="im-body"><span class="im-t">Foodora-Rechnung</span><span class="im-s">Automatisches Ausfüllen aus Foodora-Abrechnungen</span></span>
+      <span class="soon-tag im-tag">Bald</span>
+    </button>
+    <button type="button" class="im-cancel" id="imCancel">Abbrechen</button>
   </div>
 </div>
 
@@ -709,7 +755,7 @@ function save(quiet){
 function showToast(msg){
   const tst=document.getElementById("toast");
   tst.textContent=msg; tst.classList.add("show");
-  clearTimeout(showToast._t); showToast._t=setTimeout(()=>tst.classList.remove("show"),1400);
+  clearTimeout(showToast._t); showToast._t=setTimeout(()=>tst.classList.remove("show"),msg.length>40?3200:1400);
 }
 
 /* ================= number helpers (AT format) ================= */
@@ -720,7 +766,10 @@ const deDate = s => { if(!s) return ""; const [y,m,d]=s.split("-"); return `${d}
 
 /* ================= language (DE / EN) ================= */
 const EN_MAP = {
-  "✎ Daten":"✎ Edit","Bald":"Soon","Neu in Kürze: Automatisches Ausfüllen — Rechnungen füllen sich von selbst aus.":"Coming soon: auto-fill — your invoices will fill themselves in.","Hallo,":"Hi,",
+  "✎ Daten":"✎ Edit","Bald":"Soon","Rechnung importieren":"Import invoice","Alte Rechnung":"Old invoice",
+  "Eine früher erstellte FAKTURA-PDF hochladen — alle Felder werden ausgefüllt":"Upload a previously created FAKTURA PDF — every field gets filled in",
+  "Foodora-Rechnung":"Foodora invoice","Automatisches Ausfüllen aus Foodora-Abrechnungen":"Auto-fill from Foodora statements","Abbrechen":"Cancel",
+  "Foodora-Import kommt bald":"Foodora import is coming soon","Neu in Kürze: Automatisches Ausfüllen — Rechnungen füllen sich von selbst aus.":"Coming soon: auto-fill — your invoices will fill themselves in.","Hallo,":"Hi,",
   "Einfach":"Easy","Profi":"Pro",
   "Gesamtbetrag":"Total due","Positionen":"Line items",
   "PDF erstellen":"Create PDF",
@@ -767,7 +816,7 @@ const i18nNodes = [];
 document.querySelectorAll(
   "label, section>h2, .easyhint, .hint, .hero-label, .sec-title h3, .dhead h3, " +
   "#makePdf span, #addItem, #openDrawer, #importBtn, #newInvoiceBtn, #mEasy, #mPro, .totals div span:first-child, " +
-  ".hello .hi, .foot .priv, .soon-tag, .soon-txt"
+  ".hello .hi, .foot .priv, .soon-tag, .soon-txt, .im-h, .im-t, .im-s, .im-cancel"
 ).forEach(el=>{
   const n = el.firstChild;
   if(n && n.nodeType===3 && n.nodeValue.trim())
@@ -1105,23 +1154,139 @@ function loadPdfJs(){
   return pdfjsReady;
 }
 
-function applyImport(d){
-  const keys=["sName","sJob","sStreet","sCity","sGisa","sPhone","sRider","sVat",
-              "rName","rAddr","iNo","iDate","iFrom","iTo","iDesc",
-              "bOwner","bIban","bBic","bRef"];
-  keys.forEach(k=>{ if(d[k]!=null && d[k]!=="") S[k]=String(d[k]); });
+const IMPORT_KEYS=["sName","sJob","sStreet","sCity","sGisa","sPhone","sRider","sVat",
+                   "rName","rAddr","iNo","iDate","iFrom","iTo","iDesc",
+                   "bOwner","bIban","bBic","bRef"];
+/* replace=true: the PDF carried the full data set, so empty values overwrite too */
+function applyImport(d,replace){
+  IMPORT_KEYS.forEach(k=>{
+    if(!(k in d)) return;
+    if(replace || (d[k]!=null && d[k]!=="")) S[k]=String(d[k]??"");
+  });
   if(d.iDesc) S.iDescAuto=false;
   if(Array.isArray(d.items)&&d.items.length)
     S.items=d.items.map(it=>({d:String(it.d||""),q:String(it.q??""),p:String(it.p||"0,00")}));
   document.querySelectorAll("[data-k]").forEach(el=>el.value=S[el.dataset.k]??"");
-  greet(); renderItems(); renderEasy(); drawMonth(); save(true);
-  showToast(t("✓ Rechnung importiert — alle Felder ausgefüllt"));
+  greet(); renderItems(); renderEasy(); drawMonth(); calc();
+  save(true);
+  try{ localStorage.setItem(LS, JSON.stringify(S)); }catch(e){}   // persist to this account right away
 }
 
-/* best-effort text parsing for PDFs generated before data embedding existed */
+/* ---- positional PDF text reader (for PDFs without embedded data) ---- */
+async function pdfLines(pdf){
+  const out=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p), vp=page.getViewport({scale:1});
+    const tc=await page.getTextContent();
+    const its=tc.items.filter(i=>i.str.trim()).map(i=>({
+      s:i.str.trim(), x:i.transform[4]/vp.width*210, x2:(i.transform[4]+i.width)/vp.width*210,
+      y:(vp.height-i.transform[5])/vp.height*297
+    })).sort((a,b)=>a.y-b.y||a.x-b.x);
+    let cur=null;
+    its.forEach(it=>{
+      if(cur && Math.abs(it.y-cur.y)<1.4){ cur.items.push(it); }
+      else{ cur={y:it.y,page:p,items:[it]}; out.push(cur); }
+    });
+  }
+  out.forEach(l=>{ l.items.sort((a,b)=>a.x-b.x); l.text=l.items.map(i=>i.s).join(" "); });
+  return out;
+}
+const de2iso=v=>{const m=(v||"").match(/(\d{2})\.(\d{2})\.(\d{4})/);return m?`${m[3]}-${m[2]}-${m[1]}`:null;};
+const moneyIn=v=>{const m=(v||"").match(/\d[\d.]*,\d{2}/);return m?m[0]:null;};
+
+function parseInvoiceLines(L){
+  const d={};
+  const find=(re,from=0)=>{for(let i=from;i<L.length;i++) if(re.test(L[i].text)) return i; return -1;};
+  const findItem=str=>L.findIndex(l=>l.items.some(i=>i.s===str));   // markers can share a row with other columns
+  const iRec=findItem("EMPFÄNGER"), iDesc=findItem("LEISTUNGSBESCHREIBUNG"),
+        iHead=find(/^Pos\.\s+Beschreibung/), iNet=find(/^Netto-Gesamtbetrag/),
+        iBank=findItem("BANKVERBINDUNG");
+
+  /* sender block: right-aligned items above the EMPFÄNGER row */
+  const head=[];
+  L.slice(0, iRec<0?L.length:iRec+1).forEach((l,i)=>{
+    l.items.forEach(it=>{
+      if(it.s==="RECHNUNG" || it.x<100 || it.x2<150) return;
+      if(i===iRec) return;                          // that row already holds the invoice meta
+      head.push(it.s);
+    });
+  });
+  const rest=[];
+  head.forEach(t=>{
+    let m;
+    if((m=t.match(/^GISA-Zahl:\s*(.*)$/i))) d.sGisa=m[1].trim();
+    else if((m=t.match(/^Tel\.?:\s*(.*)$/i))) d.sPhone=m[1].trim();
+    else rest.push(t);
+  });
+  const cityI=rest.findIndex(t=>/^\d{4,5}\s+\S/.test(t));
+  if(cityI>=0){
+    d.sCity=rest[cityI];
+    if(cityI>=1) d.sStreet=rest[cityI-1];
+    if(cityI>=3) { d.sName=rest[0]; d.sJob=rest.slice(1,cityI-1).join(" "); }
+    else if(cityI===2) d.sName=rest[0];
+  } else if(rest.length){ d.sName=rest[0]; }
+
+  /* recipient (left) + invoice meta (right) */
+  if(iRec>=0){
+    const end=iDesc>=0?iDesc:L.length, rec=[];
+    for(let i=iRec;i<end;i++){
+      const left=L[i].items.filter(x=>x.x<112), right=L[i].items.filter(x=>x.x>=112);
+      if(i>iRec && left.length) rec.push(left.map(x=>x.s).join(" "));
+      if(right.length){
+        const k=right[0].s.replace(/:$/,""), v=right.slice(1).map(x=>x.s).join(" ").trim();
+        if(/^Rechnungsnummer/.test(k)) d.iNo=v;
+        else if(/^Rechnungsdatum/.test(k)) d.iDate=de2iso(v);
+        else if(/^Leistungszeitraum/.test(k)){ const m=v.match(/(\d{2}\.\d{2}\.\d{4})\s*[–\-]\s*(\d{2}\.\d{2}\.\d{4})/); if(m){d.iFrom=de2iso(m[1]);d.iTo=de2iso(m[2]);} }
+        else if(/^Rider-ID/.test(k)) d.sRider=v;
+      }
+    }
+    if(rec.length){ d.rName=rec[0]; d.rAddr=rec.slice(1).join("\n"); }
+  }
+
+  /* service description */
+  if(iDesc>=0 && iHead>iDesc) d.iDesc=L.slice(iDesc+1,iHead).map(l=>l.text).join(" ").trim();
+
+  /* line items */
+  if(iHead>=0){
+    const items=[]; const end=iNet>=0?iNet:L.length;
+    for(let i=iHead+1;i<end;i++){
+      const l=L[i];
+      if(/^Pos\.\s+Beschreibung/.test(l.text)) continue;               // repeated header on page 2+
+      const first=l.items[0];
+      const desc=l.items.filter(x=>x.x>=32&&x.x<112).map(x=>x.s).join(" ");
+      if(first && first.x<32 && /^\d+$/.test(first.s)){
+        const qty=l.items.find(x=>x.x>=112&&x.x2<=137), price=l.items.find(x=>x.x2>137&&x.x2<=163), tot=l.items.find(x=>x.x2>163);
+        const total=moneyIn(tot&&tot.s);
+        const flat=!qty || /pauschal/i.test(qty.s);
+        items.push({d:desc, q:flat?"":qty.s.replace(/\s/g,""), p:flat?(total||moneyIn(price&&price.s)||"0,00"):(moneyIn(price&&price.s)||total||"0,00")});
+      } else if(items.length && desc){ items[items.length-1].d+=" "+desc; }   // wrapped description
+    }
+    if(items.length) d.items=items;
+  }
+
+  /* VAT rate */
+  const iv=find(/^Umsatzsteuer\s*\(USt\)/);
+  if(iv>=0){ const m=L[iv].text.match(/([\d.,]+)\s*%/); if(m) d.sVat=m[1].replace(/\./g,""); }
+
+  /* bank */
+  if(iBank>=0) for(let i=iBank+1;i<Math.min(L.length,iBank+8);i++){
+    const it=L[i].items; if(it.length<2) continue;
+    const k=it[0].s.replace(/:$/,""), v=it.slice(1).map(x=>x.s).join(" ").trim();
+    if(k==="Kontoinhaber") d.bOwner=v; else if(k==="IBAN") d.bIban=v;
+    else if(k==="BIC") d.bBic=v; else if(k==="Verwendungszweck") d.bRef=v;
+  }
+  /* a reference identical to the automatic one is stored as "auto" (empty) */
+  if(d.bRef){
+    const auto=((d.sRider||"").trim()?"Rider-ID "+d.sRider+" / ":"")+"Rechnung "+(d.iNo||"");
+    if(d.bRef===auto) d.bRef="";
+  }
+  Object.keys(d).forEach(k=>{ if(d[k]==null) delete d[k]; });
+  return d;
+}
+
+/* regex fallback on flattened text — fills only what the positional reader missed */
 function parseInvoiceText(txt){
   const g=re=>{const m=txt.match(re);return m?m[1].trim():null;};
-  const de2iso=v=>{const m=(v||"").match(/(\d{2})\.(\d{2})\.(\d{4})/);return m?`${m[3]}-${m[2]}-${m[1]}`:null;};
   const d={};
   d.iNo=g(/Rechnungsnummer:\s*\n?\s*([^\n]+)/);
   const dat=g(/Rechnungsdatum:\s*\n?\s*([\d.]+)/); if(dat) d.iDate=de2iso(dat);
@@ -1131,18 +1296,21 @@ function parseInvoiceText(txt){
   d.bIban=g(/IBAN:\s*\n?\s*([A-Z]{2}[0-9 ]{10,32})/);
   d.bBic=g(/BIC:\s*\n?\s*([A-Z0-9]{6,11})/);
   d.bOwner=g(/Kontoinhaber:\s*\n?\s*([^\n]+)/);
-  d.bRef=g(/Verwendungszweck:\s*\n?\s*([^\n]+)/);
-  const items=[]; let m;
-  const re=/(?:^|\n)(\d{1,2})\n([^\n]+)\n(\d+|pauschal)\n(?:€\s?([\d.,]+)|—)\n€\s?([\d.,]+)/g;
-  while((m=re.exec(txt))){
-    if(m[3]==="pauschal") items.push({d:m[2],q:"",p:m[5]});
-    else items.push({d:m[2],q:m[3],p:m[4]||m[5]});
-  }
-  if(items.length) d.items=items;
-  return (d.iNo||items.length)?d:null;
+  Object.keys(d).forEach(k=>{ if(d[k]==null) delete d[k]; });
+  return d;
 }
 
-document.getElementById("importBtn").addEventListener("click",()=>document.getElementById("importFile").click());
+/* ---- import chooser ---- */
+const imModal=document.getElementById("importModal");
+const closeImport=()=>{ imModal.hidden=true; };
+const toastEl=document.getElementById("toast");
+document.getElementById("importBtn").addEventListener("click",()=>{ imModal.hidden=false; });
+document.getElementById("imCancel").addEventListener("click",closeImport);
+imModal.addEventListener("click",e=>{ if(e.target===imModal) closeImport(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape" && !imModal.hidden) closeImport(); });
+document.getElementById("imFoodora").addEventListener("click",()=>{ toastEl.classList.add("top"); showToast(t("Foodora-Import kommt bald")); setTimeout(()=>toastEl.classList.remove("top"),1800); });
+document.getElementById("imOld").addEventListener("click",()=>{ closeImport(); document.getElementById("importFile").click(); });
+
 document.getElementById("importFile").addEventListener("change",async e=>{
   const f=e.target.files[0]; e.target.value="";
   if(!f) return;
@@ -1153,17 +1321,20 @@ document.getElementById("importFile").addEventListener("change",async e=>{
     const md=await pdf.getMetadata().catch(()=>null);
     const kw=(md&&md.info&&md.info.Keywords)||"";
     if(kw.startsWith("FAKTURA1:")){
-      applyImport(JSON.parse(decodeURIComponent(kw.slice(9))));
+      applyImport(JSON.parse(decodeURIComponent(kw.slice(9))),true);
+      showToast(t("✓ Rechnung importiert — alle Felder ausgefüllt"));
       return;
     }
-    let text="";
-    for(let i=1;i<=pdf.numPages;i++){
-      const tc=await (await pdf.getPage(i)).getTextContent();
-      text+=tc.items.map(x=>x.str).join("\n")+"\n";
+    const lines=await pdfLines(pdf);
+    const d=Object.assign(parseInvoiceText(lines.map(l=>l.items.map(i=>i.s).join("\n")).join("\n")), parseInvoiceLines(lines));
+    if(!(d.iNo||(d.items&&d.items.length))){
+      showToast(t("Import fehlgeschlagen — kein FAKTURA-Rechnungs-PDF")); return;
     }
-    const d=parseInvoiceText(text);
-    if(d) applyImport(d);
-    else showToast(t("Import fehlgeschlagen — kein FAKTURA-Rechnungs-PDF"));
+    applyImport(d,false);
+    const need={sName:"Absender",sStreet:"Adresse",rName:"Empfänger",bIban:"IBAN",iNo:"Rechnungsnr."};
+    const miss=Object.keys(need).filter(k=>!d[k]).map(k=>need[k]);
+    showToast(miss.length ? (S.lang==="en"?"Imported — not found: ":"Importiert — nicht gefunden: ")+miss.join(", ")
+                          : t("✓ Rechnung importiert — alle Felder ausgefüllt"));
   }catch(err){
     showToast(t("Import fehlgeschlagen — kein FAKTURA-Rechnungs-PDF"));
   }
