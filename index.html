@@ -850,7 +850,7 @@ document.querySelectorAll("[data-k]").forEach(el=>{
     setK(k, el.value, el);
     if(k==="basePay") applyBasePay();
     if(k==="sVat") calc();
-    if(k==="sName") greet();
+    if(k==="sName"){ greet(); document.querySelectorAll('[data-k="sName"]').forEach(x=>x.classList.toggle("invalid",!!el.value.trim() && !ownsName(el.value))); }
     if(k==="iNo"||k==="iFrom"||k==="iTo") drawMonth();
     save();
   });
@@ -1328,7 +1328,9 @@ document.getElementById("importFile").addEventListener("change",async e=>{
     const md=await pdf.getMetadata().catch(()=>null);
     const kw=(md&&md.info&&md.info.Keywords)||"";
     if(kw.startsWith("FAKTURA1:")){
-      applyImport(JSON.parse(decodeURIComponent(kw.slice(9))),true);
+      const emb=JSON.parse(decodeURIComponent(kw.slice(9)));
+      if(emb.sName && !ownsName(emb.sName)){ alert(notOwnMsg(emb.sName)); return; }
+      applyImport(emb,true);
       showToast(t("✓ Rechnung importiert — alle Felder ausgefüllt"));
       return;
     }
@@ -1337,6 +1339,7 @@ document.getElementById("importFile").addEventListener("change",async e=>{
     if(!(d.iNo||(d.items&&d.items.length))){
       showToast(t("Import fehlgeschlagen — kein FAKTURA-Rechnungs-PDF")); return;
     }
+    if(d.sName && !ownsName(d.sName)){ alert(notOwnMsg(d.sName)); return; }
     applyImport(d,false);
     const need={sName:"Absender",sStreet:"Adresse",rName:"Empfänger",bIban:"IBAN",iNo:"Rechnungsnr."};
     const miss=Object.keys(need).filter(k=>!d[k]).map(k=>need[k]);
@@ -1349,6 +1352,13 @@ document.getElementById("importFile").addEventListener("change",async e=>{
 
 
 /* ================= Autofill orders from a Foodora statement ("Abrechnungsvorbereitung") ================= */
+/* a user may only create invoices for himself: the sender name must contain his own name (users.js -> ownName) */
+const ownKey=()=>String((AUTH.user&&(AUTH.user.ownName||AUTH.user.name))||"").trim();
+const plain=v=>String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+const ownsName=v=>{ const k=ownKey(); return !k || plain(v).includes(plain(k)); };
+const notOwnMsg=(who)=>S.lang==="en"
+  ? `You can only create invoices for yourself — the name must contain "${ownKey()}"${who?` (found: "${who}")`:""}.`
+  : `Du kannst nur Rechnungen für dich selbst erstellen — der Name muss „${ownKey()}“ enthalten${who?` (gefunden: „${who}“)`:""}.`;
 const normName=v=>String(v||"").toLowerCase().replace(/[^a-zäöüß ]/g," ").split(/\s+/).filter(Boolean).sort().join(" ");
 function parseFoodoraLines(L){
   const flat=L.map(l=>l.text).join("\n");
@@ -1407,10 +1417,9 @@ document.getElementById("autofillFile").addEventListener("change",async e=>{
     const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
     const d=parseFoodoraLines(await pdfLines(pdf));
     if(!d || !d.iFrom){ showToast(en?"This is not a Foodora statement":"Das ist keine Foodora-Abrechnung"); return; }
-    if(S.sName.trim() && d.riderName && normName(S.sName)!==normName(d.riderName)){
-      const q=en?`This statement belongs to "${d.riderName}", but your sender is "${S.sName}".\n\nFill in the orders anyway?`
-                :`Diese Abrechnung gehört zu „${d.riderName}“, dein Absender ist aber „${S.sName}“.\n\nBestellungen trotzdem ausfüllen?`;
-      if(!confirm(q)) return;
+    if(d.riderName && !ownsName(d.riderName)){
+      alert(S.lang==="en" ? `This statement belongs to "${d.riderName}". ${notOwnMsg()}` : `Diese Abrechnung gehört zu „${d.riderName}“. ${notOwnMsg()}`);
+      return;
     }
     const overridden=applyAutofill(d);
     const sum=S.items.reduce((a,it)=>a+lineTotal(it),0);
@@ -1444,9 +1453,12 @@ function makePdf(){
   if(S.iFrom&&S.iTo&&S.iFrom>S.iTo) problems.push(en?"Service period end is before its start":"Das Ende des Leistungszeitraums liegt vor dessen Beginn");
   if(S.items.some(it=>(it.d||it.p)&&!String(it.d).trim())) problems.push(en?"A line item has no description":"Eine Position hat keine Beschreibung");
   if(!S.items.some(it=>it.d.trim()&&lineTotal(it)!==0)) problems.push(en?"No line item with an amount":"Keine Position mit einem Betrag");
+  const foreign = String(S.sName||"").trim() && !ownsName(S.sName);
+  if(foreign) problems.push(notOwnMsg(S.sName.trim()));
   document.querySelectorAll("input.invalid,textarea.invalid").forEach(el=>el.classList.remove("invalid"));
   if(problems.length){
     const els=[];
+    if(foreign) document.querySelectorAll('[data-k="sName"]').forEach(el=>{ el.classList.add("invalid"); els.push(el); });
     missing.forEach(([k])=>document.querySelectorAll(`[data-k="${k}"]`).forEach(el=>{ el.classList.add("invalid"); els.push(el); }));
     alert((en?"The PDF cannot be created yet. Please fill in:\n\n":"Die PDF kann noch nicht erstellt werden. Bitte ausfüllen:\n\n")+problems.map(w=>"• "+w).join("\n"));
     const inDrawer=els.some(el=>el.closest(".drawer"));

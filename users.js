@@ -23,7 +23,8 @@ const BLANK_DEFAULTS = {
   ]
 };
 
+/* ownName: der Absendername jeder Rechnung muss diesen Namen enthalten (jeder darf nur für sich selbst abrechnen). */
 window.USERS = [
-  { username:"mubeen@foodora.com", name:"Mubeen", hash:"fffd4574df59192163ee4b14dc960ae2cf438d2997ab92a464648858aa15a276", defaults:BLANK_DEFAULTS },
-  { username:"hamza@foodora.com",  name:"Hamza",  hash:"c6c0acbda98c6325933e0f9345e186fd4ea56251b8c12c3648c1df86e8b5afd9", defaults:BLANK_DEFAULTS }
+  { username:"mubeen@foodora.com", name:"Mubeen", ownName:"mubeen", hash:"fffd4574df59192163ee4b14dc960ae2cf438d2997ab92a464648858aa15a276", defaults:BLANK_DEFAULTS },
+  { username:"hamza@foodora.com",  name:"Hamza",  ownName:"hamza",  hash:"c6c0acbda98c6325933e0f9345e186fd4ea56251b8c12c3648c1df86e8b5afd9", defaults:BLANK_DEFAULTS }
 ];
