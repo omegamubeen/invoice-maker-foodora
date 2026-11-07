@@ -340,6 +340,8 @@
     .im-cancel{border:none;background:transparent;color:var(--muted);font:inherit;font-weight:700;padding:10px;cursor:pointer}
 
   .im-tag{flex:none;align-self:flex-start;background:var(--grad);color:#fff;border-radius:99px;padding:3px 10px;font-size:.68rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+  .basepay{margin-bottom:12px}
+  .un.tap{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
   input.invalid,textarea.invalid{border-color:#d92d20!important;background:#fff5f4!important}
 
   /* ---------- settings sheet (drawer) ---------- */
@@ -482,6 +484,14 @@
   </section>
 
   <section>
+    <h2>Base Pay <span class="chev">▾</span></h2>
+    <div class="body grid">
+      <div class="full"><label>Base Pay pro Bestellung (€)</label><input data-k="basePay" class="num" inputmode="decimal" placeholder="5,70"></div>
+      <p class="hint full">Wird als Preis der Base-Order-Position eingesetzt — auch beim automatischen Ausfüllen der Bestellungen.</p>
+    </div>
+  </section>
+
+  <section>
     <h2>Empfänger <span class="chev">▾</span></h2>
     <div class="body grid">
       <div class="full"><label>Firma / Name</label><input data-k="rName"></div>
@@ -582,6 +592,7 @@
   <section>
     <h2>Positionen <span class="chev">▾</span></h2>
     <div class="body">
+      <div class="basepay"><label>Base Pay pro Bestellung (€)</label><input data-k="basePay" class="num" inputmode="decimal" placeholder="5,70"></div>
       <div id="items"></div>
       <button class="addrow" id="addItem" type="button">＋ Position hinzufügen</button>
       <p class="hint">Menge leer lassen = Pauschalbetrag (z. B. Trinkgeld): dann zählt „Preis“ als Gesamtbetrag. Die Mengen der Bonus-Positionen folgen automatisch der Base-Order-Menge.</p>
@@ -690,7 +701,7 @@ const DEFAULTS = {
   mode:"easy", lang:"de",
   sName:"Ahsan Muhammad", sJob:"Güterbeförderung mit Kraftfahrzeugen",
   sStreet:"Fabrikstraße 14/2", sCity:"4600 Wels",
-  sGisa:"38298813", sPhone:"", sRider:"", sVat:"0",
+  sGisa:"38298813", sPhone:"", sRider:"", sVat:"0", basePay:"5,70",
   rName:"Arli\u00B4s Road House KG",
   rAddr:"Pfarrhofsberg 36\n4714 Meggenhofen\nATU76892604",
   iNo:`${prev.getFullYear()}${String(prev.getMonth()+1).padStart(3,"0")}`,
@@ -749,7 +760,7 @@ const deDate = s => { if(!s) return ""; const [y,m,d]=s.split("-"); return `${d}
 
 /* ================= language (DE / EN) ================= */
 const EN_MAP = {
-  "✎ Daten":"✎ Edit","Rechnung importieren":"Import invoice","Alte Rechnung":"Old invoice",
+  "✎ Daten":"✎ Edit","Rechnung importieren":"Import invoice","Base Pay":"Base pay","Base Pay pro Bestellung (€)":"Base pay per order (€)","Wird als Preis der Base-Order-Position eingesetzt — auch beim automatischen Ausfüllen der Bestellungen.":"Used as the price of the base-order line — also when autofilling orders.","Alte Rechnung":"Old invoice",
   "Eine früher erstellte FAKTURA-PDF hochladen — alle Felder werden ausgefüllt":"Upload a previously created FAKTURA PDF — every field gets filled in",
   "Bestellungen automatisch ausfüllen":"Autofill orders",
   "Foodora-Abrechnung (PDF) hochladen — Zeitraum, Rider-ID und Positionen werden ausgefüllt":"Upload your Foodora statement (PDF) — period, rider ID and line items are filled in",
@@ -839,6 +850,7 @@ document.querySelectorAll("[data-k]").forEach(el=>{
     const k=el.dataset.k;
     if(k==="iDesc") S.iDescAuto=false;
     setK(k, el.value, el);
+    if(k==="basePay") applyBasePay();
     if(k==="sVat") calc();
     if(k==="sName") greet();
     if(k==="iNo"||k==="iFrom"||k==="iTo") drawMonth();
@@ -884,6 +896,14 @@ function syncBonusQuantities(source){
       if(qty) qty.value=it.q;
     }
   });
+}
+/* base pay per order -> price of the Base-Order line(s) */
+function applyBasePay(){
+  const v=String(S.basePay||"").trim();
+  if(!v) return;
+  const price=fmtDe(toNum(v));
+  S.items.forEach(it=>{ if(isBaseOrder(it)) it.p=price; });
+  renderItems(); renderEasy(); calc();
 }
 function renderItems(){
   itemsBox.innerHTML = "";
@@ -1030,7 +1050,12 @@ function renderEasy(){
     const info=document.createElement("div"); info.className="info";
     info.innerHTML=`<div class="nm"></div><div class="un"></div>`;
     info.querySelector(".nm").textContent=it.d||"—";
-    info.querySelector(".un").textContent = flat ? t("Pauschale") : `${t("à")} € ${it.p}`;
+    const un=info.querySelector(".un");
+    un.textContent = flat ? t("Pauschale") : `${t("à")} € ${it.p}`;
+    if(isBaseOrder(it)){
+      un.textContent += " ✎"; un.classList.add("tap");
+      un.addEventListener("click",()=>{ openDrawer(true); setTimeout(()=>{ const f=document.querySelector('#drawer [data-k="basePay"]'); if(f){ f.scrollIntoView({block:"center"}); f.focus(); } },250); });
+    }
     const sum=document.createElement("div"); sum.className="sum";
 
     const grip=document.createElement("div"); grip.className="grip"; grip.textContent="⠿";
@@ -1368,10 +1393,13 @@ function applyAutofill(d){
   else{ S.iFrom=d.iFrom; S.iTo=d.iTo; S.iDescAuto=true; syncServiceDescription(); syncInvoiceNumberToPeriod(); }
   if(d.sRider) S.sRider=d.sRider;
   S.items=d.items.map(it=>({d:it.d,q:it.q,p:it.p}));
+  const own=String(S.basePay||"").trim();
+  if(own) S.items.forEach(it=>{ if(isBaseOrder(it)) it.p=fmtDe(toNum(own)); });   // your own base pay wins over the statement's rate
   document.querySelectorAll("[data-k]").forEach(el=>el.value=S[el.dataset.k]??"");
   greet(); renderItems(); renderEasy(); drawMonth(); calc();
   save(true);
   try{ localStorage.setItem(LS, JSON.stringify(S)); }catch(e){}
+  return !!own;
 }
 
 document.getElementById("autofillFile").addEventListener("change",async e=>{
@@ -1389,9 +1417,9 @@ document.getElementById("autofillFile").addEventListener("change",async e=>{
                 :`Diese Abrechnung gehört zu „${d.riderName}“, dein Absender ist aber „${S.sName}“.\n\nBestellungen trotzdem ausfüllen?`;
       if(!confirm(q)) return;
     }
-    applyAutofill(d);
+    const overridden=applyAutofill(d);
     const sum=S.items.reduce((a,it)=>a+lineTotal(it),0);
-    const mismatch=d.total && Math.abs(sum-toNum(d.total))>0.005;
+    const mismatch=!overridden && d.total && Math.abs(sum-toNum(d.total))>0.005;
     showToast(mismatch ? (en?`⚠ Filled, but total differs from statement (${d.total} €)`:`⚠ Ausgefüllt, aber Summe weicht von der Abrechnung ab (${d.total} €)`)
                        : (en?`✓ ${S.items.length} items filled · ${deDate(S.iFrom)} – ${deDate(S.iTo)}`:`✓ ${S.items.length} Positionen ausgefüllt · ${deDate(S.iFrom)} – ${deDate(S.iTo)}`));
   }catch(err){
@@ -1408,7 +1436,7 @@ function makePdf(){
   const REQUIRED=[
     ["sName","Absender: Name","Sender: name"],["sJob","Absender: Tätigkeit","Sender: business activity"],
     ["sStreet","Absender: Straße, Nr.","Sender: street"],["sCity","Absender: PLZ, Ort","Sender: postcode, city"],
-    ["sPhone","Absender: Telefon","Sender: phone"],["sGisa","Absender: GISA-Zahl","Sender: GISA number"],
+    ["sGisa","Absender: GISA-Zahl","Sender: GISA number"],
     ["sRider","Absender: Rider-ID","Sender: rider ID"],["sVat","USt %","VAT %"],
     ["rName","Empfänger: Firma / Name","Recipient: company / name"],["rAddr","Empfänger: Adresse","Recipient: address"],
     ["iNo","Rechnungsnummer","Invoice number"],["iDate","Rechnungsdatum","Invoice date"],
@@ -1435,10 +1463,11 @@ function makePdf(){
   const doc = new jspdf.jsPDF({unit:"mm",format:"a4"});
   const W=210, L=20, R=W-20; let y=20;
 
+  /* !! The titles and texts of the generated PDF are FIXED — never change, add or remove any of them. !! */
   /* header */
   doc.setFont("helvetica","bold").setFontSize(22).setTextColor(...NAVY).text("RECHNUNG",L,y+6);
   doc.setFont("helvetica","normal").setFontSize(9).setTextColor(40);
-  doc.text([S.sName,S.sJob,S.sStreet,S.sCity,(S.sPhone||"").trim()?"Tel.: "+S.sPhone.trim():"","GISA-Zahl: "+S.sGisa].filter(Boolean),R,y,{align:"right"});
+  doc.text([S.sName,S.sJob,S.sStreet,S.sCity,"GISA-Zahl: "+S.sGisa].filter(Boolean),R,y,{align:"right"});
   y+=26; doc.setDrawColor(...NAVY).setLineWidth(.8).line(L,y,R,y); y+=8;
 
   /* recipient + invoice meta */

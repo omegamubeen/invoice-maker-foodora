@@ -16,7 +16,7 @@ const BLANK_DEFAULTS = {
   rName:"", rAddr:"",
   bOwner:"", bIban:"", bBic:"", bRef:"",
   items:[
-    {d:"Zustellungen / Base Order Pay", q:"0", p:"0,00"},
+    {d:"Zustellungen / Base Order Pay (inkl. Weighted)", q:"0", p:"5,70"},
     {d:"Shifts Done Bonus", q:"0", p:"0,00"},
     {d:"KT20 Bonus", q:"0", p:"0,00"},
     {d:"Kunden-Trinkgeld (App Tips)", q:"", p:"0,00"}

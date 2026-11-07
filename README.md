@@ -76,3 +76,5 @@ invoice-maker/
 - Reines HTML/CSS/JavaScript — kein Build-Schritt, keine Abhängigkeiten zu installieren
 - [jsPDF](https://github.com/parallax/jsPDF) + jspdf-autotable über CDN für die PDF-Erzeugung
 - localStorage für Datenspeicherung, Service Worker für Offline-Betrieb
+
+> Die Titel und Texte der erzeugten PDF sind fest und werden nicht verändert (siehe `CLAUDE.md`).
